@@ -16,6 +16,12 @@ $ docker build --no-cache -t mds_provider_client .
   - `--no-cache` forces a rebuild of all steps
   - `-t mds_provider_client` tags this image with a name
 
+### Create the `.env` file
+
+```bash
+$ cp ../.env.sample .env
+```
+
 ### Run the `client` image
 
 ```bash
@@ -29,7 +35,7 @@ mds_provider_client
 
   - `docker run mds_provider_client` runs the previously built image
   - `--name "mds_provider_client"` give this container a name
-  - `--env-file ".env"` use the indicated environment variables file. See [`.env.sample`](.env.sample) for an example.
+  - `--env-file ".env"` use the indicated environment variables file. See [`.env.sample`](../.env.sample) for an example.
   - `--publish "8088:80"` maps port `8088` in the host to port `80` in the container.
   - `--detach` runs this container in the background
 

@@ -16,6 +16,12 @@ $ docker build --no-cache -t mds_provider_server .
   - `-t mds_provider_server` tags this image with a name
   - `docker build .` builds according to the Dockerfile in this directory
 
+### Create the `.env` file
+
+```bash
+$ cp ../.env.sample .env
+```
+
 ### Run the `server` image
 
 ```bash
@@ -29,7 +35,7 @@ mds_provider_server
 
   - `docker run mds_provider_server` runs the previously built image
   - `--name "mds_provider_server"` give this container a name
-  - `--env-file ".env"` use the indicated environment variables file. See [`.env.sample`](.env.sample) for an example.
+  - `--env-file ".env"` use the indicated environment variables file. See [`.env.sample`](../.env.sample) for an example.
   - `--publish "5432:5432"` maps port `5432` in the host to port `5432` in the container.
   - `--detach` runs this container in the background
 
