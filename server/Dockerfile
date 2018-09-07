@@ -1,1 +1,2 @@
-FROM tailordev/pandas
+FROM mdillon/postgis
+
