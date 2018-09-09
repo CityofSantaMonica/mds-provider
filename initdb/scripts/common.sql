@@ -1,3 +1,31 @@
--- create the shared enum types
+CREATE TYPE vehicle_types AS ENUM (
+    'bicycle',
+    'scooter',
+    'adaptive'
+);
 
-SELECT '[init/scripts/common] is running';
+CREATE TYPE propulsion_types AS ENUM (
+    'human',
+    'electric',
+    'combustion'
+);
+
+CREATE TYPE event_types AS ENUM (
+    'available',
+    'reserved',
+    'unavailable',
+    'removed'
+);
+
+CREATE TYPE event_type_reasons AS ENUM (
+    'service_start',
+    'maintenance_drop_off',
+    'rebalance_drop_off',
+    'user_drop_off',
+    'user_pick_up',
+    'maintenance',
+    'low_battery',
+    'service_end',
+    'rebalance_pick_up',
+    'maintenance_pick_up'
+);

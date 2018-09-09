@@ -10,4 +10,4 @@ psql \
     --dbname "$POSTGRES_DB" \
     --file scripts/common.sql \
     --file scripts/trips.sql \
-    --file scripts/service_changes.sql
+    --file scripts/status_changes.sql
