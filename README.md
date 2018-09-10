@@ -16,14 +16,14 @@ $ cp .env.sample .env
 
 ### Start the containers
 
-Start a local PostgreSQL server, as well as a local pgAdmin 4 client. Runs initialization
+Start a local PostgreSQL server, as well as a local pgAdmin4 client. Runs initialization
 scripts to create the database `$MDS_DB` with user account info `$MDS_USER` and `$MDS_PASSWORD`.
 
 ```bash
 $ docker-compose up -d --build --force-recreate
 ```
 
-Now browse http://localhost:$PGADMIN_HOST_PORT to connect.
+Now browse `http://localhost:$PGADMIN_HOST_PORT` to connect.
 
 ### Stop the containers
 

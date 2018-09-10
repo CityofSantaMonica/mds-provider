@@ -1,10 +1,21 @@
 # initdb
 
+Initialize an MDS `provider` database.
+
+## Configuration
+
+This container uses the following environment variables to initialize the MDS database:
+
+```bash
+MDS_DB=mds_provider
+MDS_USER=mds_provider
+MDS_PASSWORD=mds_provider_password
+```
+
 ## Setup scripts
 
-Setup scripts can be found in the [`bin/`](bin/) directory. These can be run from
-within the running container directly, or by using the container in *executable*
-form.
+Run the [setup scripts](bin/) from within the running container directly, or by
+using the container in executable form with Compose.
 
 ### Initialize the database
 
@@ -16,8 +27,7 @@ $ docker-compose run initdb bin/initdb.sh
 
 ### Reset the database
 
-Tears down the MDS database and then runs `initdb.sh`. Ensure there are no
-active connections before running.
+Tears down the MDS database and then re-initializes.
 
 ```
 $ docker-compose run initdb bin/reset.sh
