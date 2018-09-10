@@ -30,3 +30,6 @@ services:
       - POSTGRES_DB
       - POSTGRES_USER
       - POSTGRES_PASSWORD
+      - MDS_DB
+      - MDS_USER
+      - MDS_PASSWORD

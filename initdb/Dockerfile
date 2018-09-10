@@ -3,4 +3,4 @@ FROM mdillon/postgis
 WORKDIR /mds
 COPY . /mds
 
-ENTRYPOINT ["/bin/bash", "wait.sh", "/mds/initdb.sh"]
+CMD ["bin/wait.sh", "bin/initdb.sh"]

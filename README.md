@@ -1,10 +1,10 @@
-# mds-provider-store
+# mds-provider
 
-Docker containers for running an [MDS Provider][provider] data store.
+Docker containers for running an [MDS `provider`][provider] data store.
 
-## Getting started
+## Local development
 
-Requires both [Docker][docker] and [Docker Compose][compose] for local development.
+Requires both [Docker][docker] and [Docker Compose][compose].
 
 ### Create an `.env` file
 
@@ -16,17 +16,18 @@ $ cp .env.sample .env
 
 ### Start the containers
 
-Start a local PostgreSQL server, as well as a local pgAdmin 4 client.
+Start a local PostgreSQL server, as well as a local pgAdmin 4 client. Runs initialization
+scripts to create the database `$MDS_DB` with user account info `$MDS_USER` and `$MDS_PASSWORD`.
 
 ```bash
 $ docker-compose up -d --build --force-recreate
 ```
 
-Now head to http://localhost:$PGADMIN_HOST_PORT to connect.
+Now browse http://localhost:$PGADMIN_HOST_PORT to connect.
 
-### Stop the container
+### Stop the containers
 
-Shutdown and completely erase the containers
+Shutdown and completely erase the containers.
 
 ```bash
 $ docker-compose down
