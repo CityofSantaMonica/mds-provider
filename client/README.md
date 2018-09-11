@@ -2,35 +2,19 @@
 
 A web client interface into `provider` data store server(s).
 
-## Getting Started
+## Configuration
 
-Run these commands from a shell inside this directory.
-
-### Build the `client` image
+This container uses the following environment variables to configure pgAdmin4:
 
 ```bash
-$ docker build --no-cache -t mds_provider_client .
+PGADMIN_DEFAULT_EMAIL=user@domain.com
+PGADMIN_DEFAULT_PASSWORD=pgadmin_password
+PGADMIN_HOST_PORT=8088
 ```
 
-  - `docker build .` builds according to the Dockerfile in this directory
-  - `--no-cache` forces a rebuild of all steps
-  - `-t mds_provider_client` tags this image with a name
+## Connecting
 
-### Run the `client` image
+Once running, connect to the container from a web browser at:  
+`http://localhost:$PGADMIN_HOST_PORT`.
 
-```bash
-$ docker run \
-    --name "mds_provider_client" \
-    --env-file ".env" \
-    --publish "8088:80" \
-    --detach \
-mds_provider_client
-````
-
-  - `docker run mds_provider_client` runs the previously built image
-  - `--name "mds_provider_client"` give this container a name
-  - `--env-file ".env"` use the indicated environment variables file. See [`.env.sample`](.env.sample) for an example.
-  - `--publish "8088:80"` maps port `8088` in the host to port `80` in the container.
-  - `--detach` runs this container in the background
-
-Now launch a browser in the host pointed at `localhost:8088`.
+Use the `$PGADMIN_DEFAULT_EMAIL` and `$PGADMIN_DEFAULT_PASSWORD` to log in.

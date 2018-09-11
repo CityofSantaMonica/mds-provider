@@ -1,0 +1,35 @@
+version: "3"
+services:
+  client:
+    build: ./client
+    image: mds_provider_client
+    container_name: mds_provider_client
+    environment:
+      - PGADMIN_DEFAULT_EMAIL
+      - PGADMIN_DEFAULT_PASSWORD
+    ports:
+      - "${PGADMIN_HOST_PORT}:80"
+  server:
+    build: ./server
+    image: mds_provider_server
+    container_name: mds_provider_server
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+    ports:
+      - "5432:5432"
+  initdb:
+    build: ./initdb
+    image: mds_provider_initdb
+    container_name: mds_provider_initdb
+    depends_on:
+      - server
+    environment:
+      - POSTGRES_HOSTNAME
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - MDS_DB
+      - MDS_USER
+      - MDS_PASSWORD
