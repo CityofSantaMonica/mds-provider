@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS trips (
-    provider_name TEXT NOT NULL,
     provider_id UUID NOT NULL,
-    vin TEXT NOT NULL,
+    provider_name TEXT NOT NULL,
     device_id UUID NOT NULL,
+    vehicle_id TEXT NOT NULL,
     vehicle_type vehicle_types NOT NULL,
     propulsion_type propulsion_types[] NOT NULL,
     trip_id UUID NOT NULL,

@@ -1,7 +1,6 @@
 CREATE TYPE vehicle_types AS ENUM (
     'bicycle',
-    'scooter',
-    'adaptive'
+    'scooter'
 );
 
 CREATE TYPE propulsion_types AS ENUM (
