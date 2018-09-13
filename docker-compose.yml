@@ -33,3 +33,16 @@ services:
       - MDS_DB
       - MDS_USER
       - MDS_PASSWORD
+  fake:
+    build: ./fake
+    image: mds_provider_fake
+    container_name: mds_provider_fake
+    environment:
+      - MDS_BOUNDARY
+      - NB_USER
+      - NB_UID
+      - NB_GID
+    ports:
+      - "${NB_HOST_PORT}:8888"
+    volumes:
+      - ./fake:/home/${NB_USER}/work/mds

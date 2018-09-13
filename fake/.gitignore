@@ -1,0 +1,3 @@
+*.geojson
+*.ipynb*
+__pycache__/
