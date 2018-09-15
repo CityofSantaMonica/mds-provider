@@ -7,3 +7,5 @@ RUN pip install --upgrade pip && \
     pip install -r ./requirements.txt && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
+
+WORKDIR /home/$NB_USER/work/mds

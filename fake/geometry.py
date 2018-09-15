@@ -1,5 +1,8 @@
 import fiona
+import geopandas
+import json
 import math
+import os
 import random
 import requests
 import shapely.geometry
@@ -7,23 +10,26 @@ import shapely.ops
 
 __default_boundary_file = "boundary.geojson"
 
-def make_boundary(boundary_file):
+def parse_boundary(boundary_file, downloads=None):
     """
     Read boundary data from :boundary_file: into a shapely.geometry.Polygon
+
+    If :boundary_file: is a URL, download and save to the directory :downloads:.
     """
     if boundary_file.startswith("http") and boundary_file.endswith(".geojson"):
-        print("downloading boundary_file from: ", boundary_file)
         r = requests.get(boundary_file)
-        with open(__default_boundary_file, "w") as f:
-            f.write(r.text)
-        boundary_file = __default_boundary_file
+        path = __default_boundary_file if downloads is None else \
+               os.path.join(downloads, __default_boundary_file)
+        with open(path, "w") as f:
+            json.dump(r.json(), f)
+        boundary_file = path
     # meld all the features together into a unified polygon
     features = fiona.open(boundary_file)
     polygons = [shapely.geometry.shape(feature["geometry"]) for feature in features]
     polygons_meld = shapely.ops.cascaded_union(polygons)
     return shapely.geometry.Polygon(polygons_meld)
 
-def random_point_within(boundary):
+def point_within(boundary):
     """
     Create a random point somewhere within :boundary:
     """
@@ -39,7 +45,7 @@ def random_point_within(boundary):
         point = compute()
     return point
 
-def nearby_point(point, dist, bearing=None):
+def point_nearby(point, dist, bearing=None):
     """
     Create a random point :dist: meters from :point:
 
@@ -60,3 +66,26 @@ def nearby_point(point, dist, bearing=None):
                              math.cos(ang_dist) - math.sin(lat1) * math.sin(lat2))
     # return the new point
     return shapely.geometry.Point(math.degrees(lon2), math.degrees(lat2))
+
+def to_feature(shape, properties={}):
+    """
+    Create a GeoJSON Feature object for the given shapely.geometry :shape:.
+
+    Optionally give the Feature a :properties: dict.
+    """
+    collection = to_feature_collection(shape)
+    feature = collection["features"][0]
+    feature["properties"] = properties
+    # remove some unecessary and redundant data
+    if "id" in feature:
+        del feature["id"]
+    if isinstance(shape, shapely.geometry.Point) and "bbox" in feature:
+        del feature["bbox"]
+    return dict(feature)
+
+def to_feature_collection(shape):
+    """
+    Create a GeoJSON FeatureCollection object for the given shapely.geometry :shape:.
+    """
+    collection = geopandas.GeoSeries([shape]).__geo_interface__
+    return dict(collection)
