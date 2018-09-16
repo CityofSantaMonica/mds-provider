@@ -2,7 +2,44 @@
 
 Generate fake MDS `provider` data for testing and development.
 
-## Configuration
+## Running
+
+Run the container to generate randomized data, destroying the container when finished.
+The data is persisted in this directory in `./data` by default, via a Docker volume.
+
+```bash
+$ docker-compose run --rm fake
+```
+
+### Parameters
+
+Customize data generation by appending the following arguments to the above command:
+
+```
+--boundary      Path (within the container) or URL to a .geojson file
+                with geographic bounds for the generated data.
+
+                Overrides the $MDS_BOUNDARY environment variable.
+
+--provider      The name of the fake mobility as a service provider
+
+--devices       The number of devices to model in the generated data
+
+--start         YYYY-MM-DD of the earliest event in the generated data
+
+--end           YYYY-MM-DD of the latest event in the generated data
+
+--open          The hour of the day (24-hr format) that provider begins operations
+
+--close         The hour of the day (24-hr format) that provider stops operations
+
+--inactivity    The percent of the fleet that remains inactive; e.g.
+                --inactivity=0.05 means 5% of the fleet remains inactive
+
+--output        Path to a directory to write the resulting data file(s)
+```
+
+## Container Configuration
 
 The container uses the following environment variables:
 

@@ -9,3 +9,5 @@ RUN pip install --upgrade pip && \
     fix-permissions /home/$NB_USER
 
 WORKDIR /home/$NB_USER/work/mds
+
+CMD ["python", "main.py"]
