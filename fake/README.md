@@ -11,9 +11,16 @@ The data is persisted in this directory in `./data` by default, via a Docker vol
 $ docker-compose run --rm fake
 ```
 
-### Parameters
+### Options
 
-Customize data generation by appending the following arguments to the above command:
+First change the above `run` command to:
+
+```bash
+$ docker-compose run --rm fake python main.py [OPTIONS]
+```
+
+Then customize data generation by appending any combination of the following OPTIONS
+like `--option1 value1 --option2 value2`:
 
 ```
 --boundary      Path (within the container) or URL to a .geojson file
@@ -36,7 +43,7 @@ Customize data generation by appending the following arguments to the above comm
 --inactivity    The percent of the fleet that remains inactive; e.g.
                 --inactivity=0.05 means 5% of the fleet remains inactive
 
---output        Path to a directory to write the resulting data file(s)
+--output        Path to a directory (in the container) to write the resulting data file(s)
 ```
 
 ## Container Configuration
@@ -54,10 +61,21 @@ NB_HOST_PORT=8888
 
 ### `$MDS_BOUNDARY`
 
-This should be the path or URL to a `.geojson` file in [4326](http://epsg.io/4326), containing a FeatureCollection of (potentially overlapping) Polygons. See the file at the above URL for an example.
+Should be a path or URL to a `.geojson` file in [4326](http://epsg.io/4326), 
+containing a FeatureCollection of (potentially overlapping) Polygons. See the file at the above URL for an example.
 
 The subsequent generated data will be within the unioned area of these Polygons.
 
 ### Local Development
 
-The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT, where this directory is mounted under `./mds`.
+The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT
+This directory is mounted under `./mds`.
+
+Start the notebook server:
+
+```bash
+$ docker-compose run --rm fake bash "~/start-notebook.sh"
+```
+
+**Note** the wrapping quotes around the `~/start-notebook.sh` path: 
+this is so `~/` is evaluated inside the container, and not in the host.

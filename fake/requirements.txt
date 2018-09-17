@@ -1,4 +1,5 @@
 fiona
 geopandas
+numpy
 requests
 shapely

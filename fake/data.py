@@ -29,18 +29,19 @@ def random_string(k, chars=None):
 
 class JsonEncoder(json.JSONEncoder):
     """
-    Overrides the default json encoding for some special types:
-        - UUID -> str
+    Provides json encoding for some special types:
         - datetime -> Unix timestamp
         - Point/Polygon -> GeoJSON Feature
+        - tuple -> list
+        - UUID -> str
     """
     def default(self, obj):
-        if isinstance(obj, uuid.UUID):
-            return str(obj)
         if isinstance(obj, datetime):
             return obj.timestamp()
-        if isinstance(obj, tuple):
-            return list(obj)
         if isinstance(obj, Point) or isinstance(obj, Polygon):
             return geometry.to_feature(obj)
+        if isinstance(obj, tuple):
+            return list(obj)
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
         return json.JSONEncoder.default(self, obj)
