@@ -5,7 +5,8 @@ Generate fake MDS `provider` data for testing and development.
 ## Running
 
 Run the container to generate randomized data, destroying the container when finished.
-The data is persisted in this directory in `./data` by default, via a Docker volume.
+
+The data is persisted in this directory in a `data/` subdirectory by default, via a Docker volume.
 
 ```bash
 $ docker-compose run --rm fake
@@ -32,31 +33,38 @@ like `--option1 value1 --option2 value2`:
 
 --devices       The number of devices to model in the generated data
 
---start         YYYY-MM-DD of the earliest event in the generated data
+--date_format   Format for datetime I/O. Options:
+                    - 'unix' for Unix timestamps (default)
+                    - 'iso8601' for ISO 8601 format
+                    - '<python format string>' for custom formats, see
+                       https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior
 
---end           YYYY-MM-DD of the latest event in the generated data
+--start         The earliest event in the generated data, in --date_format format
 
---open          The hour of the day (24-hr format) that provider begins operations
+--end           The latest event in the generated data, in --date_format format
 
---close         The hour of the day (24-hr format) that provider stops operations
+--open          The hour of the day (24-hr format) that provider begins operations. 
+                Overrides --start and --end.
 
---inactivity    The percent of the fleet that remains inactive; e.g.
-                --inactivity=0.05 means 5% of the fleet remains inactive
+--close         The hour of the day (24-hr format) that provider stops operations.
+                Overrides --start and --end.
+
+--inactivity    Describes the portion of the fleet that remains inactive; e.g.
+                --inactivity=0.05 means 5 percent of the fleet remains inactive
+
+--speed_mph     The average speed of devices in miles per hour. Overridden by --speed_ms.
+
+--speed_ms      The average speed of devices in meters per second. Overrides --speed_mph.
 
 --output        Path to a directory (in the container) to write the resulting data file(s)
 ```
 
 ## Container Configuration
 
-The container uses the following environment variables:
+The container can use the following environment variables:
 
 ```bash
 MDS_BOUNDARY=https://opendata.arcgis.com/datasets/bcc6c6245c5f46b68e043f6179bab153_3.geojson
-
-NB_USER=joyvan
-NB_UID=1000
-NB_GID=100
-NB_HOST_PORT=8888
 ```
 
 ### `$MDS_BOUNDARY`
@@ -66,16 +74,35 @@ containing a FeatureCollection of (potentially overlapping) Polygons. See the fi
 
 The subsequent generated data will be within the unioned area of these Polygons.
 
-### Local Development
+## Local Development
 
 The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT
+
 This directory is mounted under `./mds`.
 
-Start the notebook server:
+First, ensure the image is up to date:
 
 ```bash
-$ docker-compose run --rm fake bash "~/start-notebook.sh"
+$ cd ./fake
+$ docker build --no-cache -t mds_provider_fake .
 ```
 
-**Note** the wrapping quotes around the `~/start-notebook.sh` path: 
-this is so `~/` is evaluated inside the container, and not in the host.
+Then start the notebook server:
+
+```bash
+$ cd ..
+$ docker-compose run --rm fake start-notebook.sh
+```
+
+`--rm` cleans up the container and its resources when it shuts down.
+
+### Configuration
+
+Configure the development environment using the following environment variables:
+
+```bash
+NB_USER=joyvan
+NB_UID=1000
+NB_GID=100
+NB_HOST_PORT=8888
+```

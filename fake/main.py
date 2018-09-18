@@ -61,7 +61,7 @@ parser.add_argument(
 parser.add_argument(
     "--inactivity",
     type=float,
-    help="A parameter describing the portion of the fleet that remains inactive;\
+    help="Describes the portion of the fleet that remains inactive;\
         e.g. --inactivity=0.05 means 5 percent of the fleet remains inactive"
 )
 parser.add_argument(
