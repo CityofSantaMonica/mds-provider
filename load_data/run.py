@@ -1,1 +1,0 @@
-print("[load_data] is running")
