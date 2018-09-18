@@ -1,5 +1,5 @@
 import argparse
-from data import random_string, JsonEncoder
+from data import random_string, CustomJsonEncoder
 from datetime import datetime, timedelta
 import geometry
 import json
@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--boundary",
     type=str,
-    help="Path to a data file with geographic bounds for the generated data. \
+    help="Path to a data file with geographic bounds for the generated data.\
           Overrides the $MDS_BOUNDARY environment variable."
 )
 parser.add_argument(
@@ -30,30 +30,39 @@ parser.add_argument(
     help="The number of devices to model in the generated data"
 )
 parser.add_argument(
+    "--date_format",
+    type=str,
+    help="Format for datetime I/O. Options:\
+        - 'unix' for Unix timestamps (default)\
+        - 'iso8601' for ISO 8601 format\
+        - '<python format string>' for custom formats,\
+           see https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior"
+)
+parser.add_argument(
     "--start",
     type=str,
-    help="YYYY-MM-DD of the earliest event in the generated data"
+    help="The earliest event in the generated data, in --date_format format"
 )
 parser.add_argument(
     "--end",
     type=str,
-    help="YYYY-MM-DD of the latest event in the generated data"
+    help="The latest event in the generated data, in --date_format format"
 )
 parser.add_argument(
     "--open",
     type=int,
-    help="The hour of the day (24-hr format) that provider begins operations"
+    help="The hour of the day (24-hr format) that provider begins operations. Overrides --start and --end."
 )
 parser.add_argument(
     "--close",
     type=int,
-    help="The hour of the day (24-hr format) that provider stops operations"
+    help="The hour of the day (24-hr format) that provider stops operations. Overrides --start and --end."
 )
 parser.add_argument(
     "--inactivity",
     type=float,
-    help="A parameter describing the portion of the fleet that remains inactive; \
-    e.g. --inactivity=0.05 means 5 percent of the fleet remains inactive"
+    help="A parameter describing the portion of the fleet that remains inactive;\
+        e.g. --inactivity=0.05 means 5 percent of the fleet remains inactive"
 )
 parser.add_argument(
     "--speed_mph",
@@ -82,18 +91,35 @@ except:
 # collect the parameters for data generation
 provider = args.provider or "Provider {}".format(random_string(3))
 N = args.devices or random.randint(100, 500)
-date_start = datetime.fromisoformat(args.start) if args.start else datetime.today()
-date_end = datetime.fromisoformat(args.end) if args.end else (date_start + timedelta(days=1))
+
+date_format = "unix" if args.date_format is None else args.date_format
+encoder = CustomJsonEncoder(date_format=date_format)
+
+date_start = datetime.today()
+date_end = date_start
+
+if date_format == "unix":
+    date_start = datetime.fromtimestamp(args.start) if args.start else date_start
+    date_end = datetime.fromtimestamp(args.end) if args.end else date_end
+elif date_format == "iso8601":
+    date_start = datetime.fromisoformat(args.start) if args.start else date_start
+    date_end = datetime.fromisoformat(args.end) if args.end else date_end
+else:
+    date_start = datetime.strptime(args.start, date_format) if args.start else date_start
+    date_end = datetime.strptime(args.end, date_format) if args.end else date_end
+
 hour_open = 7 if args.open is None else args.open
 hour_closed = 19 if args.close is None else args.close
 inactivity = random.uniform(0, 0.05) if args.inactivity is None else args.inactivity
-ONE_MPH_METERS = 0.44704
+
+# convert speed to meters/second
+ONE_MPH_METERSSEC = 0.44704
 if args.speed_ms is not None:
     speed = args.speed_ms
 elif args.speed_mph is not None:
-    speed = args.speed_mph * ONE_MPH_METERS
+    speed = args.speed_mph * ONE_MPH_METERSSEC
 else:
-    speed = random.uniform(10 * ONE_MPH_METERS, 15 * ONE_MPH_METERS)
+    speed = random.uniform(8 * ONE_MPH_METERSSEC, 15 * ONE_MPH_METERSSEC)
 
 # setup a data directory
 outputdir = "data" if args.output is None else args.output
@@ -117,15 +143,15 @@ print("Generating data from {} to {}".format(date_start.isoformat(), date_end.is
 t1 = time.time()
 date = date_start
 while(date <= date_end):
-    iso = date.isoformat()
-    print("Starting day: {} ({} to {})".format(iso, hour_open, hour_closed))
+    formatted_date = encoder.encode(date)
+    print("Starting day: {} ({} to {})".format(formatted_date, hour_open, hour_closed))
     t2 = time.time()
     day_status_changes, day_trips = \
         gen.service_day(devices, date, hour_open, hour_closed, inactivity)
     status_changes.extend(day_status_changes)
     trips.extend(day_trips)
     date = date + timedelta(days=1)
-    print("Finished day: {} ({} s)".format(iso, time.time() - t2))
+    print("Finished day: {} ({} s)".format(formatted_date, time.time() - t2))
 print("Finished generating data ({} s)".format(time.time() - t1))
 
 if len(status_changes) > 0 or len(trips) > 0:
@@ -136,16 +162,17 @@ if len(status_changes) > 0 or len(trips) > 0:
     print("Writing to:", trips_file)
     t2 = time.time()
     with open(trips_file, "w") as f:
-        json.dump(trips, f, cls=JsonEncoder)
+        f.write(encoder.encode(trips))
     print("Finished ({} s)".format(time.time() - t2))
 
     sc_file = os.path.join(outputdir, "status_changes.json")
     print("Writing to:", sc_file)
     t2 = time.time()
     with open(sc_file, "w") as f:
-        json.dump(status_changes, f, cls=JsonEncoder)
+        f.write(encoder.encode(status_changes))
     print("Finished ({} s)".format(time.time() - t2))
 
     print("Generating data files complete ({} s)".format(time.time() - t1))
 
 print("Data generation complete ({} s)".format(time.time() - T0))
+

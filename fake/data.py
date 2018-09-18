@@ -27,7 +27,7 @@ def random_string(k, chars=None):
         chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     return "".join(random.choices(chars, k=k))
 
-class JsonEncoder(json.JSONEncoder):
+class CustomJsonEncoder(json.JSONEncoder):
     """
     Provides json encoding for some special types:
         - datetime -> Unix timestamp
@@ -35,9 +35,29 @@ class JsonEncoder(json.JSONEncoder):
         - tuple -> list
         - UUID -> str
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a `CustomJsonEncoder` with an optional :date_format:
+           - `unix` to format dates as Unix timestamps
+           - `iso8601` to format dates as ISO 8601 strings
+           - `<python format string>` for custom formats
+        """
+        if "date_format" in kwargs:
+            self.date_format = kwargs["date_format"] if "date_format" in kwargs else None
+            del kwargs["date_format"]
+        json.JSONEncoder.__init__(self, *args, **kwargs)
+
     def default(self, obj):
         if isinstance(obj, datetime):
-            return obj.timestamp()
+            if self.date_format == "unix":
+                return obj.timestamp()
+            elif self.date_format == "iso8601":
+                return obj.isoformat()
+            elif self.date_format is not None:
+                return obj.strftime(self.date_format)
+            else:
+                return str(obj)
         if isinstance(obj, Point) or isinstance(obj, Polygon):
             return geometry.to_feature(obj)
         if isinstance(obj, tuple):
