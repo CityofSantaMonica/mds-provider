@@ -1,4 +1,4 @@
-from data import random_date_from, random_string
+from data import random_date_from, random_string, random_file_url
 from datetime import datetime, timedelta
 from geometry import point_within, point_nearby
 import math
@@ -21,6 +21,8 @@ event_type_reasons = dict(available=["service_start",
                                    "maintenance_pick_up"])
 
 BATTERY = "battery_pct"
+EVENT_LOC = "event_location"
+EVENT_TIME = "event_time"
 PROPULSION = "propulsion_type"
 
 class DataGenerator:
@@ -76,7 +78,7 @@ class DataGenerator:
         # inactive will only get start/end service events in the same location
         inactive_devices = random.sample(devices, int(len(devices)*inactivity))
         inactive_starts = self.start_service(inactive_devices, start_time)
-        inactive_locations = [e["event_location"] for e in inactive_starts]
+        inactive_locations = [e[EVENT_LOC] for e in inactive_starts]
         inactive_ends = self.end_service(inactive_devices, end_time, inactive_locations)
         day_status_changes.extend(inactive_starts + inactive_ends)
         # all the rest of the devices that participate in the service day
@@ -87,7 +89,7 @@ class DataGenerator:
         # initialized to the beginning of the day
         times = [start_time for e in start_events]
         # the list of event_location from the prior event for each device
-        locations = [e["event_location"] for e in start_events]
+        locations = [e[EVENT_LOC] for e in start_events]
         # devices removed from service during a given hour
         removed_devices = []
         # model each hour of the day (including the last)
@@ -100,8 +102,8 @@ class DataGenerator:
                 # generate the placement events
                 events = self.devices_recharged(recharged, start_time)
                 day_status_changes.extend(events)
-                times.extend([e["event_time"] for e in events])
-                locations.extend([e["event_location"] for e in events])
+                times.extend([e[EVENT_TIME] for e in events])
+                locations.extend([e[EVENT_LOC] for e in events])
                 # update the list of removed devices
                 removed_devices = [d for d in removed_devices if d not in recharged]
             # generate data for the hour
@@ -174,8 +176,8 @@ class DataGenerator:
                 changes.extend(status)
                 trips.append({**device, **trip})
                 # update the device's time and location from the trip's end event
-                times[devices.index(device)] = status[-1]["event_time"]
-                locations[devices.index(device)] = status[-1]["event_location"]
+                times[devices.index(device)] = status[-1][EVENT_TIME]
+                locations[devices.index(device)] = status[-1][EVENT_LOC]
             elif self.has_battery(device):
                 # no, it won't take a trip -- leak some power anyway
                 self.drain_battery(device, rate=random.uniform(0, 0.05))
@@ -244,7 +246,6 @@ class DataGenerator:
             service_changes.append({**device, **service_end})
         return service_changes
 
-    ## event_times, event_locations, end_locations
     def device_trip(self, device, event_time=None, event_location=None,
                     end_location=None, reference_time=None, min_td=timedelta(seconds=0),
                     max_td=timedelta(seconds=0), speed=None):
@@ -273,7 +274,7 @@ class DataGenerator:
             event_location = point_within(self.boundary)
         if speed is None:
             speed = self.speed
-
+        # begin the trip
         status_changes = [self.start_trip(device, event_time, event_location)]
         # random trip duration (in seconds)
         # chisquared just seemed to fit...
@@ -286,25 +287,39 @@ class DataGenerator:
             amount = speed / 100
             rate = trip_distance / (math.sqrt(trip_distance) * 200)
             self.drain_battery(device, amount=amount, rate=rate)
-
+        # calculate out the ending time and location
         end_time = event_time + timedelta(seconds=trip_duration)
         if end_location is None:
             end_location = point_nearby(event_location, trip_distance)
-
+        # generate the route object
+        route = self.trip_route(device, event_time, event_location, end_time, end_location)
+        # and finally the trip object
         trip = dict(
             trip_id=uuid.uuid4(),
             trip_duration=trip_duration,
             trip_distance=trip_distance,
-            start_location=event_location,
-            end_location=end_location,
-            end_time=end_time,
-            start_time=event_time
+            route=route,
+            start_time=event_time,
+            end_time=end_time
         )
-
+        # add a parking_verification_url?
+        if random.choice([True, False]):
+            trip.update(parking_verification_url=random_file_url(device["provider_name"]))
+        # add a standard_cost?
+        if random.choice([True, False]):
+            # $1.00 to start and $0.15 a minute thereafter
+            trip.update(standard_cost=(100 + (math.floor(trip_duration/60) - 1) * 15))
+        # add an actual cost?
+        if random.choice([True, False]):
+            # randomize an actual_cost
+            # $0.75 - $1.50 to start, and $0.12 - $0.20 a minute thereafter...
+            start, rate = random.randint(75, 150), random.randint(12, 20)
+            trip.update(actual_cost=(start + (math.floor(trip_duration/60) - 1) * rate))
+        # end the trip
         status_changes.append(self.end_trip(device, end_time, end_location))
-
-        # battery info is not part of the trip
+        # merge the device info into the trip
         trip = {**device, **trip}
+        # battery info is not part of the trip
         if self.has_battery(trip):
             del trip[BATTERY]
 
@@ -321,6 +336,19 @@ class DataGenerator:
             event_time=event_time,
             event_location=event_location
         )
+
+    def trip_route(self, device, start_time, start_location, end_time, end_location):
+        features = []
+        for e in [(start_time, start_location), (end_time, end_location)]:
+            features.append(
+                dict(type="Feature",
+                     properties=dict(timestamp=e[0]),
+                     geometry=dict(type="Point",
+                                   coordinates=[e[1].x, e[1].y]
+                     )
+                )
+            )
+        return dict(type="FeatureCollection", features=features)
 
     def end_trip(self, device, event_time, event_location):
         """

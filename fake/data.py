@@ -27,6 +27,10 @@ def random_string(k, chars=None):
         chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     return "".join(random.choices(chars, k=k))
 
+def random_file_url(company):
+    return "https://{}.co/{}.jpg".format("".join(company.split()), random_string(7).lower())
+
+
 class CustomJsonEncoder(json.JSONEncoder):
     """
     Provides json encoding for some special types:
