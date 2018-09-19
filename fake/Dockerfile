@@ -10,4 +10,4 @@ RUN pip install --upgrade pip && \
 
 WORKDIR /home/$NB_USER/work/mds
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["python", "main.py"]

@@ -4,66 +4,67 @@ Generate fake MDS `provider` data for testing and development.
 
 ## Running
 
-Run the container to generate randomized data, destroying the container when finished.
+Run the container to generate randomized data.
 
-The data is persisted in this directory in a `data/` subdirectory by default, via a Docker volume.
+The data is persisted in this directory in a `data/` subdirectory
+(even after the container is torn down), via a Docker volume.
 
-```bash
-$ docker-compose run --rm fake
-```
-
-### Options
-
-First change the above `run` command to:
+**Note** `docker-compose` commands should be run from the root of this repository, where the 
+`docker-compose.yml` file lives.
 
 ```bash
-$ docker-compose run --rm fake python main.py [OPTIONS]
+$ docker-compose run --rm fake [OPTIONS]
 ```
 
-Then customize data generation by appending any combination of the following OPTIONS
-like `--option1 value1 --option2 value2`:
+(`--rm` cleans up the container and its resources when it shuts down, and isn't strictly necessary)
+
+### `[OPTIONS]`
+
+Customize data generation by appending any combination of the following OPTIONS to the above command:
 
 ```
---boundary      Path (within the container) or URL to a .geojson file
-                with geographic bounds for the generated data.
+--boundary          Path (within the container) or URL to a .geojson file
+                    with geographic bounds for the generated data.
 
-                Overrides the $MDS_BOUNDARY environment variable.
+                    Overrides the $MDS_BOUNDARY environment variable.
 
---close         The hour of the day (24-hr format) that provider stops operations.
-                Overrides --start and --end.
+--close             The hour of the day (24-hr format) that provider stops operations.
+                    Overrides --start and --end.
 
---date_format   Format for datetime input (to this CLI) and output (files and stdout)
-                Options:
+--date_format       Format for datetime input (to this CLI) and output (files and stdout)
+                    Options:
                     - 'unix' for Unix timestamps (default)
                     - 'iso8601' for ISO 8601 format
                     - '<python format string>' for custom formats, see
                        https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior
 
---devices          The number of devices to model in the generated data
+--devices           The number of devices to model in the generated data
 
---end              The latest event in the generated data, in --date_format format
+--end               The latest event in the generated data, in --date_format format
 
---inactivity       Describes the portion of the fleet that remains inactive; e.g.
-                   --inactivity=0.05 means 5 percent of the fleet remains inactive
+--inactivity        Describes the portion of the fleet that remains inactive; e.g.
+                    --inactivity=0.05 means 5 percent of the fleet remains inactive
 
---open             The hour of the day (24-hr format) that provider begins operations.
-                   Overrides --start and --end.
+--open              The hour of the day (24-hr format) that provider begins operations.
+                    Overrides --start and --end.
 
---output           Path to a directory (in the container) to write the resulting data file(s)
+--output            Path to a directory (in the container) to write the resulting data file(s)
 
---propulsion_types A list of propulsion_types to use for the generated data
+--propulsion_types  A comma-separated list of propulsion_types to use for the generated data
+                    e.g. --propulsion_types human,electric
 
---provider         The name of the fake mobility as a service provider
+--provider          The name of the fake mobility as a service provider
 
---speed_mph        The average speed of devices in miles per hour.
-                   Overridden by --speed_ms.
+--speed_mph         The average speed of devices in miles per hour.
+                    Overridden by --speed_ms.
 
---speed_ms         The average speed of devices in meters per second.
-                   Overrides --speed_mph.
+--speed_ms          The average speed of devices in meters per second.
+                    Overrides --speed_mph.
 
---start            The earliest event in the generated data, in --date_format format
+--start             The earliest event in the generated data, in --date_format format
 
---vehicle_types    A list of vehicle_types to use for the generated data
+--vehicle_types     A comma separated list of vehicle_types to use for the generated data
+                    e.g. --vehicle_types scooter,bike
 ```
 
 ## Container Configuration
@@ -98,10 +99,12 @@ Then start the notebook server:
 
 ```bash
 $ cd ..
-$ docker-compose run --rm fake start-notebook.sh
+$ docker-compose run --rm --entrypoint bash fake start-notebook.sh
 ```
 
-`--rm` cleans up the container and its resources when it shuts down.
+**Note** the additional `--entrypoint bash` option for the `docker-compose run` command.
+This overrides the container's entrypoint from running the default data generation script `main.py`
+to running the `start-notebook.sh` script from the base Docker image.
 
 ### Configuration
 
