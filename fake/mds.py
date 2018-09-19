@@ -2,7 +2,6 @@ from data import random_date_from, random_string, random_file_url
 from datetime import datetime, timedelta
 from geometry import point_within, point_nearby
 import math
-import numpy.random
 import random
 import uuid
 
@@ -303,9 +302,11 @@ class DataGenerator:
         # begin the trip
         status_changes = [self.start_trip(device, event_time, event_location)]
         # random trip duration (in seconds)
-        # chisquared just seemed to fit...
-        # expanding by a scale factor for minutes, then multiplying to get seconds
-        trip_duration = numpy.random.chisquare(5) * 1.25 * 60
+        # the gamma distribution is referenced in the literature,
+        # see: https://static.tti.tamu.edu/tti.tamu.edu/documents/17-1.pdf
+        # experimenting with the scale factors led to these parameterizations, * 60 to get seconds
+        alpha, beta = 3, 4.5
+        trip_duration = random.gammavariate(alpha, beta) * 60
         # account for traffic, turns, etc.
         trip_distance = trip_duration * speed * 0.8
         if self.has_battery(device):
