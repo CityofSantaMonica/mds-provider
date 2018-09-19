@@ -29,34 +29,41 @@ like `--option1 value1 --option2 value2`:
 
                 Overrides the $MDS_BOUNDARY environment variable.
 
---provider      The name of the fake mobility as a service provider
+--close         The hour of the day (24-hr format) that provider stops operations.
+                Overrides --start and --end.
 
---devices       The number of devices to model in the generated data
-
---date_format   Format for datetime I/O. Options:
+--date_format   Format for datetime input (to this CLI) and output (files and stdout)
+                Options:
                     - 'unix' for Unix timestamps (default)
                     - 'iso8601' for ISO 8601 format
                     - '<python format string>' for custom formats, see
                        https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior
 
---start         The earliest event in the generated data, in --date_format format
+--devices          The number of devices to model in the generated data
 
---end           The latest event in the generated data, in --date_format format
+--end              The latest event in the generated data, in --date_format format
 
---open          The hour of the day (24-hr format) that provider begins operations. 
-                Overrides --start and --end.
+--inactivity       Describes the portion of the fleet that remains inactive; e.g.
+                   --inactivity=0.05 means 5 percent of the fleet remains inactive
 
---close         The hour of the day (24-hr format) that provider stops operations.
-                Overrides --start and --end.
+--open             The hour of the day (24-hr format) that provider begins operations.
+                   Overrides --start and --end.
 
---inactivity    Describes the portion of the fleet that remains inactive; e.g.
-                --inactivity=0.05 means 5 percent of the fleet remains inactive
+--output           Path to a directory (in the container) to write the resulting data file(s)
 
---speed_mph     The average speed of devices in miles per hour. Overridden by --speed_ms.
+--propulsion_types A list of propulsion_types to use for the generated data
 
---speed_ms      The average speed of devices in meters per second. Overrides --speed_mph.
+--provider         The name of the fake mobility as a service provider
 
---output        Path to a directory (in the container) to write the resulting data file(s)
+--speed_mph        The average speed of devices in miles per hour.
+                   Overridden by --speed_ms.
+
+--speed_ms         The average speed of devices in meters per second.
+                   Overrides --speed_mph.
+
+--start            The earliest event in the generated data, in --date_format format
+
+--vehicle_types    A list of vehicle_types to use for the generated data
 ```
 
 ## Container Configuration

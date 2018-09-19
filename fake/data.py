@@ -3,6 +3,7 @@ import geometry
 import json
 from shapely.geometry import Point, Polygon
 import random
+import string
 import uuid
 
 def random_date_from(date,
@@ -24,11 +25,13 @@ def random_string(k, chars=None):
     Optionally use the set of characters :chars:.
     """
     if chars is None:
-        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        chars = string.ascii_uppercase + string.digits 
     return "".join(random.choices(chars, k=k))
 
 def random_file_url(company):
-    return "https://{}.co/{}.jpg".format("".join(company.split()), random_string(7).lower())
+    return "https://{}.co/{}.jpg".format(
+        "-".join(company.split()), random_string(7)
+    ).lower()
 
 
 class CustomJsonEncoder(json.JSONEncoder):

@@ -20,9 +20,18 @@ parser.add_argument(
           Overrides the $MDS_BOUNDARY environment variable."
 )
 parser.add_argument(
-    "--provider",
+    "--close",
+    type=int,
+    help="The hour of the day (24-hr format) that provider stops operations. Overrides --start and --end."
+)
+parser.add_argument(
+    "--date_format",
     type=str,
-    help="The name of the fake mobility as a service provider"
+    help="Format for datetime input (to this CLI) and output (to stdout and files). Options:\
+        - 'unix' for Unix timestamps (default)\
+        - 'iso8601' for ISO 8601 format\
+        - '<python format string>' for custom formats,\
+           see https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior"
 )
 parser.add_argument(
     "--devices",
@@ -30,39 +39,42 @@ parser.add_argument(
     help="The number of devices to model in the generated data"
 )
 parser.add_argument(
-    "--date_format",
-    type=str,
-    help="Format for datetime I/O. Options:\
-        - 'unix' for Unix timestamps (default)\
-        - 'iso8601' for ISO 8601 format\
-        - '<python format string>' for custom formats,\
-           see https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior"
-)
-parser.add_argument(
-    "--start",
-    type=str,
-    help="The earliest event in the generated data, in --date_format format"
-)
-parser.add_argument(
     "--end",
     type=str,
     help="The latest event in the generated data, in --date_format format"
 )
 parser.add_argument(
-    "--open",
-    type=int,
-    help="The hour of the day (24-hr format) that provider begins operations. Overrides --start and --end."
-)
-parser.add_argument(
-    "--close",
-    type=int,
-    help="The hour of the day (24-hr format) that provider stops operations. Overrides --start and --end."
-)
-parser.add_argument(
     "--inactivity",
     type=float,
-    help="Describes the portion of the fleet that remains inactive;\
-        e.g. --inactivity=0.05 means 5 percent of the fleet remains inactive"
+    help="Describes the portion of the fleet that remains inactive\
+          e.g. --inactivity=0.05 means 5 percent of the fleet remains inactive"
+)
+parser.add_argument(
+    "--open",
+    type=int,
+    help="The hour of the day (24-hr format) that provider begins operations.\
+          Overrides --start and --end."
+)
+parser.add_argument(
+    "--output",
+    type=str,
+    help="Path to a directory to write the resulting data file(s)"
+)
+parser.add_argument(
+    "--propulsion_types",
+    type=str,
+    help="A list of propulsion_types to use for the generated data\
+          e.g. '{}'".format("', '".join(mds.PROPULSION_TYPES))
+)
+parser.add_argument(
+    "--provider",
+    type=str,
+    help="The name of the fake mobility as a service provider"
+)
+parser.add_argument(
+    "--start",
+    type=str,
+    help="The earliest event in the generated data, in --date_format format"
 )
 parser.add_argument(
     "--speed_mph",
@@ -75,10 +87,12 @@ parser.add_argument(
     help="The average speed of devices in meters per second. Always takes precedence."
 )
 parser.add_argument(
-    "--output",
+    "--vehicle_types",
     type=str,
-    help="Path to a directory to write the resulting data file(s)"
+    help="A list of vehicle_types to use for the generated data:\
+          e.g. '{}'".format("', '".join(mds.VEHICLE_TYPES))
 )
+
 args = parser.parse_args()
 print("Parsed args: {}".format(args))
 
@@ -130,7 +144,10 @@ t1 = time.time()
 boundary = geometry.parse_boundary(boundary_file, downloads=outputdir)
 print("Valid boundary: {} ({} s)".format(boundary.is_valid, time.time() - t1))
 
-gen = mds.DataGenerator(boundary, speed)
+gen = mds.DataGenerator(boundary=boundary,
+                        speed=speed,
+                        vehicle_types=args.vehicle_types,
+                        propulsion_types=args.propulsion_types)
 
 print("Generating {} devices for '{}'".format(N, provider))
 t1 = time.time()

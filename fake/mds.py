@@ -7,9 +7,9 @@ import random
 import uuid
 
 VERSION = "0.1.0"
-vehicle_types = ["bicycle", "scooter"]
-propulsion_types = ["human", "electric", "electric_assist", "combustion"]
-event_type_reasons = dict(available=["service_start",
+VEHICLE_TYPES = ["bicycle", "scooter"]
+PROPULSION_TYPES = ["human", "electric", "electric_assist", "combustion"]
+EVENT_TYPE_REASONS = dict(available=["service_start",
                                      "user_drop_off",
                                      "rebalance_drop_off",
                                      "maintenance_drop_off"],
@@ -33,13 +33,41 @@ class DataGenerator:
 
     TD_HOUR = timedelta(seconds=3600)
 
-    def __init__(self, boundary, speed):
+    def __init__(self, **kwargs):
         """
-        Initialize a new DataGenerator using the provided geographic :boundary: and an average deivce
-        :speed: (in meters/second).
+        Initialize a new DataGenerator using the provided context. 
+
+        Required keyword arguments:
+            - :boundary: is the geographic boundary within which to generate data
+              see geometry.parse_boundary(:boundary_file:)
+
+        Optional keyword arguments:
+            - :speed: the average speed of devices (in meters/second)
+            - :vehicle_types: the vehicle_types to use for generation
+            - :propulsion_types: the propulsion_types to use for generation
         """
-        self.boundary = boundary
-        self.speed = speed
+        key = "boundary"
+        if not key in kwargs:
+            raise("A geographic boundary is required")
+        self.boundary = kwargs[key]
+
+        key = "speed"
+        if key in kwargs and kwargs[key] is not None:
+            self.speed = kwargs[key]
+
+        key = "vehicle_types"
+        if key in kwargs and kwargs[key] is not None:
+            self.vehicle_types = kwargs[key].split(",")\
+                if isinstance(kwargs[key], str) else kwargs[key]
+        else:
+            self.vehicle_types = VEHICLE_TYPES
+
+        key = "propulsion_types"
+        if key in kwargs and kwargs[key] is not None:
+            self.propulsion_types = kwargs[key].split(",")\
+                if isinstance(kwargs[key], str) else kwargs[key]
+        else:
+            self.propulsion_types = PROPULSION_TYPES
 
     def devices(self, N, provider):
         """
@@ -52,8 +80,8 @@ class DataGenerator:
                           provider_name=provider,
                           device_id=uuid.uuid4(),
                           vehicle_id=random_string(6),
-                          vehicle_type=random.choice(vehicle_types),
-                          propulsion_type=[random.choice(propulsion_types)])
+                          vehicle_type=random.choice(self.vehicle_types),
+                          propulsion_type=[random.choice(self.propulsion_types)])
             if self.has_battery(device):
                 self.recharge_battery(device)
             devices.append(device)
@@ -93,14 +121,14 @@ class DataGenerator:
         # devices removed from service during a given hour
         removed_devices = []
         # model each hour of the day (including the last)
-        for hour in range(hour_open, hour_closed+1):
+        for hour in range(hour_open, hour_closed + 1):
             # some devices may be recharged and put back into service this hour
             recharged = random.sample(removed_devices, random.randint(0, len(removed_devices)))
             if len(recharged) > 0:
                 # re-activate these for the hour
                 active_devices.extend(recharged)
                 # generate the placement events
-                events = self.devices_recharged(recharged, start_time)
+                events = self.devices_recharged(recharged, [r[EVENT_TIME] for r in recharged])
                 day_status_changes.extend(events)
                 times.extend([e[EVENT_TIME] for e in events])
                 locations.extend([e[EVENT_LOC] for e in events])
@@ -147,25 +175,23 @@ class DataGenerator:
         active, removed, changes, trips = [], [], [], []
         # chance of taking or not taking a trip
         weights = [1 - inactivity, inactivity]
-        for device in devices:
+        for device_idx in range(0, len(devices)):
+            device = devices[device_idx]
             # assume this device will be active this hour
             active.append(device)
-            location = locations[devices.index(device)]
-            current_time = times[devices.index(device)]
+            location = locations[device_idx]
+            current_time = times[device_idx]
             # check the device's charge level
-            if self.has_battery(device):
-                if device[BATTERY] < 0.2:
-                    # battery is too low -> deactivate
-                    lowbattery = self.device_lowbattery(device, current_time, location)
-                    del active[active.index(device)]
-                    removed.append(device)
-                    changes.append(lowbattery)
-                    continue
-                else:
-                    # weight the weights, using the remaining battery charge for e-devices
-                    w0 = weights[0] * device[BATTERY]
-                    w1 = 1 - w0
-                    weights = [w0, w1]
+            if self.has_battery(device) and device[BATTERY] < 0.2:
+                # battery is too low -> deactivate
+                lowbattery = self.device_lowbattery(device, current_time, location)
+                # update the state for this event and device
+                del active[active.index(device)]
+                rmvd = dict(device)
+                rmvd.update(event_time=lowbattery[EVENT_TIME])
+                removed.append(rmvd)
+                changes.append(lowbattery)
+                continue
             # will this device take a trip?
             if random.choices([True, False], weights=weights, k=1)[0]:
                 # yes, it will -- sometime this hour
@@ -176,8 +202,8 @@ class DataGenerator:
                 changes.extend(status)
                 trips.append({**device, **trip})
                 # update the device's time and location from the trip's end event
-                times[devices.index(device)] = status[-1][EVENT_TIME]
-                locations[devices.index(device)] = status[-1][EVENT_LOC]
+                times[device_idx] = status[-1][EVENT_TIME]
+                locations[device_idx] = status[-1][EVENT_LOC]
             elif self.has_battery(device):
                 # no, it won't take a trip -- leak some power anyway
                 self.drain_battery(device, rate=random.uniform(0, 0.05))
@@ -417,7 +443,7 @@ class DataGenerator:
         """
         Create a `available:maintenance_drop_off` status change event.
         """
-        device[BATTERY] = 1.0
+        self.recharge_battery(device)
         return self.status_change_event(
             device,
             event_type="available",
