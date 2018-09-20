@@ -5,6 +5,7 @@ CREATE TYPE vehicle_types AS ENUM (
 
 CREATE TYPE propulsion_types AS ENUM (
     'human',
+    'electric_assist',
     'electric',
     'combustion'
 );
