@@ -1,5 +1,6 @@
-fiona
-geopandas
-numpy
-requests
-shapely
+Fiona==1.7.13
+geopandas==0.4.0
+numpy==1.13.3
+pandas==0.23.4
+requests==2.19.1
+Shapely==1.6.4.post2

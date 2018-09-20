@@ -9,9 +9,6 @@ Run the container to generate randomized data.
 The data is persisted in this directory in a `data/` subdirectory
 (even after the container is torn down), via a Docker volume.
 
-**Note** `docker-compose` commands should be run from the root of this repository, where the 
-`docker-compose.yml` file lives.
-
 ```bash
 $ docker-compose run --rm fake [OPTIONS]
 ```
@@ -20,7 +17,7 @@ $ docker-compose run --rm fake [OPTIONS]
 
 ### `[OPTIONS]`
 
-Customize data generation by appending any combination of the following OPTIONS to the above command:
+Customize data generation by appending any combination of the following to the above command:
 
 ```
 --boundary          Path (within the container) or URL to a .geojson file

@@ -51,7 +51,7 @@ class CustomJsonEncoder(json.JSONEncoder):
            - `<python format string>` for custom formats
         """
         if "date_format" in kwargs:
-            self.date_format = kwargs["date_format"] if "date_format" in kwargs else None
+            self.date_format = kwargs["date_format"]
             del kwargs["date_format"]
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
