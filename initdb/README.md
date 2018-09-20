@@ -1,12 +1,17 @@
 # initdb
 
-Initialize an MDS `provider` database.
+Initialize an MDS `provider` database in a Postgres database server.
 
 ## Configuration
 
 This container uses the following environment variables to initialize the MDS database:
 
 ```bash
+POSTGRES_HOSTNAME=server
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres_password
+
 MDS_DB=mds_provider
 MDS_USER=mds_provider
 MDS_PASSWORD=mds_provider_password

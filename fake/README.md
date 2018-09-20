@@ -23,7 +23,7 @@ Customize data generation by appending any combination of the following to the a
 --boundary          Path (within the container) or URL to a .geojson file
                     with geographic bounds for the generated data.
 
-                    Overrides the $MDS_BOUNDARY environment variable.
+                    Overrides the MDS_BOUNDARY environment variable.
 
 --close             The hour of the day (24-hr format) that provider stops operations.
                     Overrides --start and --end.
@@ -64,20 +64,22 @@ Customize data generation by appending any combination of the following to the a
                     e.g. --vehicle_types scooter,bike
 ```
 
-## Container Configuration
+### Data boundary
 
-The container can use the following environment variables:
+The `--boundary` command line parameter must be provided if no environment variable has
+been configured.
+
+The container can be configured using an environment variable like:
 
 ```bash
 MDS_BOUNDARY=https://opendata.arcgis.com/datasets/bcc6c6245c5f46b68e043f6179bab153_3.geojson
 ```
 
-### `$MDS_BOUNDARY`
+In either case, it should be the path or URL to a `.geojson` file in [4326][4326],
+containing a FeatureCollection of (potentially overlapping) Polygons. See the file
+at the above URL for an example.
 
-Should be a path or URL to a `.geojson` file in [4326](http://epsg.io/4326), 
-containing a FeatureCollection of (potentially overlapping) Polygons. See the file at the above URL for an example.
-
-The subsequent generated data will be within the unioned area of these Polygons.
+The generation process will use the unioned area of these Polygons as a reference.
 
 ## Local Development
 
@@ -105,7 +107,7 @@ to running the `start-notebook.sh` script from the base Docker image.
 
 ### Configuration
 
-Configure the development environment using the following environment variables:
+Configure the notebook environment using the following environment variables:
 
 ```bash
 NB_USER=joyvan
@@ -113,3 +115,5 @@ NB_UID=1000
 NB_GID=100
 NB_HOST_PORT=8888
 ```
+
+[4326]: http://epsg.io/4326

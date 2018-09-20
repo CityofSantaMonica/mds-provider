@@ -1,6 +1,6 @@
 # server
 
-A local `provider` data store.
+A local postgres database server.
 
 ## Configuration
 
