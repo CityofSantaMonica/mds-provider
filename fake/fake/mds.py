@@ -325,10 +325,10 @@ class DataGenerator:
         route = self.trip_route(device, event_time, event_location, end_time, end_location)
         # and finally the trip object
         trip = dict(
-            accuracy=accuracy,
+            accuracy=int(accuracy),
             trip_id=uuid.uuid4(),
-            trip_duration=trip_duration,
-            trip_distance=trip_distance,
+            trip_duration=int(trip_duration),
+            trip_distance=int(trip_distance),
             route=route,
             start_time=event_time,
             end_time=end_time
