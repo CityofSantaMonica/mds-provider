@@ -4,6 +4,7 @@ from geometry import point_within, point_nearby
 import math
 import random
 import uuid
+import scipy.stats
 
 VERSION = "0.1.0"
 VEHICLE_TYPES = ["bicycle", "scooter"]
@@ -309,6 +310,8 @@ class DataGenerator:
         trip_duration = random.gammavariate(alpha, beta) * 60
         # account for traffic, turns, etc.
         trip_distance = trip_duration * speed * 0.8
+        # Model the accuracy as a rayleigh distribution with median ~5m
+        accuracy = scipy.stats.rayleigh.rvs(scale=5)
         if self.has_battery(device):
             # drain the battery according to the speed and distance traveled
             amount = speed / 100
@@ -322,6 +325,7 @@ class DataGenerator:
         route = self.trip_route(device, event_time, event_location, end_time, end_location)
         # and finally the trip object
         trip = dict(
+            accuracy=accuracy,
             trip_id=uuid.uuid4(),
             trip_duration=trip_duration,
             trip_distance=trip_distance,
