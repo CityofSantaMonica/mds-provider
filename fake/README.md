@@ -4,10 +4,15 @@ Generate fake MDS `provider` data for testing and development.
 
 ## Running
 
-Run the container to generate randomized data.
+Run the container to generate randomized data. The data is persisted in this directory in a `data/` subdirectory (even after the container is torn down), via a Docker volume.
 
-The data is persisted in this directory in a `data/` subdirectory
-(even after the container is torn down), via a Docker volume.
+First, ensure the image is up to date locally:
+
+```bash
+$ docker-compose build --no-cache fake
+```
+
+Then run the data generator:
 
 ```bash
 $ docker-compose run --rm fake [OPTIONS]
@@ -83,27 +88,29 @@ The generation process will use the unioned area of these Polygons as a referenc
 
 ## Local Development
 
-The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT
+The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT.
 
-This directory is mounted under `./mds`.
+This directory is the root of the Notebook server filesystem.
 
-First, ensure the image is up to date:
-
-```bash
-$ cd ./fake
-$ docker build --no-cache -t mds_provider_fake .
-```
-
-Then start the notebook server:
+First, ensure the image is up to date locally:
 
 ```bash
-$ cd ..
-$ docker-compose run --rm --entrypoint bash fake start-notebook.sh
+$ docker-compose build --no-cache fake
 ```
 
-**Note** the additional `--entrypoint bash` option for the `docker-compose run` command.
-This overrides the container's entrypoint from running the default data generation script `main.py`
-to running the `start-notebook.sh` script from the base Docker image.
+Then start the notebook server with:
+
+```bash
+$ docker-compose run --rm --service-ports --entrypoint bash fake start-notebook.sh
+```
+
+**Note** the additional parameters given to the `docker-compose run` command:
+
+  - `--service-ports` ensures http://localhost:$NB_HOST_PORT is mapped correctly to the notebook server
+
+  - `--entrypoint bash` overrides the container's entrypoint from running the data generation script to running bash
+
+  - `start-notebook.sh` is a script from the base container that starts the Jupyter Notebook server, execucted by the bash entrypoint
 
 ### Configuration
 
