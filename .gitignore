@@ -1,2 +1,6 @@
 *.env
+*.ipynb*
+
 .vscode/
+__pycache__/
+data/

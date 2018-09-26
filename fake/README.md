@@ -88,7 +88,7 @@ The generation process will use the unioned area of these Polygons as a referenc
 
 ## Local Development
 
-The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_HOST_PORT.
+The container makes available a Jupyter Notebook server to the host at http://localhost:$NB_FAKE_HOST_PORT.
 
 This directory is the root of the Notebook server filesystem.
 
@@ -101,12 +101,12 @@ $ docker-compose build --no-cache fake
 Then start the notebook server with:
 
 ```bash
-$ docker-compose run --rm --service-ports --entrypoint bash fake start-notebook.sh
+$ docker-compose run --service-ports --entrypoint bash fake start-notebook.sh
 ```
 
 **Note** the additional parameters given to the `docker-compose run` command:
 
-  - `--service-ports` ensures http://localhost:$NB_HOST_PORT is mapped correctly to the notebook server
+  - `--service-ports` ensures http://localhost:$NB_FAKE_HOST_PORT is mapped correctly to the notebook server
 
   - `--entrypoint bash` overrides the container's entrypoint from running the data generation script to running bash
 
@@ -120,7 +120,7 @@ Configure the notebook environment using the following environment variables:
 NB_USER=joyvan
 NB_UID=1000
 NB_GID=100
-NB_HOST_PORT=8888
+NB_FAKE_HOST_PORT=8888
 ```
 
 [4326]: http://epsg.io/4326
