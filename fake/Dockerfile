@@ -20,4 +20,4 @@ RUN pip install -r requirements.txt && \
     fix-permissions /home/$NB_USER
 
 # sets up an "executable container" for the data generation script
-ENTRYPOINT ["python", "fake/main.py"]
+ENTRYPOINT ["python", "main.py"]

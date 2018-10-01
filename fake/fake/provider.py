@@ -1,35 +1,23 @@
-from data import random_date_from, random_string, random_file_url
 from datetime import datetime, timedelta
-from geometry import point_within, point_nearby
+from fake.data import random_date_from, random_string, random_file_url
+from fake.geometry import point_within, point_nearby, to_feature, extract_point
 import math
+import mds
 import random
 import uuid
 import scipy.stats
 
-VERSION = "0.1.0"
-VEHICLE_TYPES = ["bicycle", "scooter"]
-PROPULSION_TYPES = ["human", "electric", "electric_assist", "combustion"]
-EVENT_TYPE_REASONS = dict(available=["service_start",
-                                     "user_drop_off",
-                                     "rebalance_drop_off",
-                                     "maintenance_drop_off"],
-                          reserved=["user_pick_up"],
-                          unavailable=["maintenance",
-                                       "low_battery"],
-                          removed=["service_end",
-                                   "rebalance_pick_up",
-                                   "maintenance_pick_up"])
 
 BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
 EVENT_TIME = "event_time"
 PROPULSION = "propulsion_type"
 
+
 class DataGenerator:
     """
     Generates fake MDS Provider data.
     """
-
 
     TD_HOUR = timedelta(seconds=3600)
 
@@ -60,14 +48,14 @@ class DataGenerator:
             self.vehicle_types = kwargs[key].split(",")\
                 if isinstance(kwargs[key], str) else kwargs[key]
         else:
-            self.vehicle_types = VEHICLE_TYPES
+            self.vehicle_types = mds.VEHICLE_TYPES
 
         key = "propulsion_types"
         if key in kwargs and kwargs[key] is not None:
             self.propulsion_types = kwargs[key].split(",")\
                 if isinstance(kwargs[key], str) else kwargs[key]
         else:
-            self.propulsion_types = PROPULSION_TYPES
+            self.propulsion_types = mds.PROPULSION_TYPES
 
     def devices(self, N, provider):
         """
@@ -75,6 +63,7 @@ class DataGenerator:
         """
         devices = []
         provider_id = uuid.uuid4()
+
         for _ in range(N):
             device = dict(provider_id=provider_id,
                           provider_name=provider,
@@ -82,9 +71,13 @@ class DataGenerator:
                           vehicle_id=random_string(6),
                           vehicle_type=random.choice(self.vehicle_types),
                           propulsion_type=[random.choice(self.propulsion_types)])
+
+            # ensure electric devices are charged
             if self.has_battery(device):
                 self.recharge_battery(device)
+
             devices.append(device)
+
         return devices
 
     def service_day(self, devices, date, hour_open, hour_closed, inactivity):
@@ -102,6 +95,7 @@ class DataGenerator:
         day_status_changes, day_trips = [], []
         start_time = date.replace(hour=hour_open)
         end_time = date.replace(hour=hour_closed)
+
         # partition the devices into inactive and active
         # inactive will only get start/end service events in the same location
         inactive_devices = random.sample(devices, int(len(devices)*inactivity))
@@ -109,10 +103,12 @@ class DataGenerator:
         inactive_locations = [e[EVENT_LOC] for e in inactive_starts]
         inactive_ends = self.end_service(inactive_devices, end_time, inactive_locations)
         day_status_changes.extend(inactive_starts + inactive_ends)
+
         # all the rest of the devices that participate in the service day
         active_devices = [d for d in devices if d not in inactive_devices]
         start_events = self.start_service(active_devices, start_time)
         day_status_changes.extend(start_events)
+
         # the list of event_time from the prior event for each device
         # initialized to the beginning of the day
         times = [start_time for e in start_events]
@@ -120,6 +116,7 @@ class DataGenerator:
         locations = [e[EVENT_LOC] for e in start_events]
         # devices removed from service during a given hour
         removed_devices = []
+
         # model each hour of the day (including the last)
         for hour in range(hour_open, hour_closed + 1):
             # some devices may be recharged and put back into service this hour
@@ -134,6 +131,7 @@ class DataGenerator:
                 locations.extend([e[EVENT_LOC] for e in events])
                 # update the list of removed devices
                 removed_devices = [d for d in removed_devices if d not in recharged]
+
             # generate data for the hour
             active_devices, times, locations, removed, hour_changes, hour_trips = \
                 self.service_hour(
@@ -147,8 +145,10 @@ class DataGenerator:
             day_status_changes.extend(hour_changes)
             day_trips.extend(hour_trips)
             removed_devices.extend(removed)
+
         # end service for the remaining active devices
         day_status_changes.extend(self.end_service(active_devices, end_time, locations))
+
         return day_status_changes, day_trips
 
     def service_hour(self, devices, date, hour, times, locations, inactivity):
@@ -173,14 +173,16 @@ class DataGenerator:
             - trips starting this hour
         """
         active, removed, changes, trips = [], [], [], []
+
         # chance of taking or not taking a trip
         weights = [1 - inactivity, inactivity]
         for device_idx in range(0, len(devices)):
-            device = devices[device_idx]
             # assume this device will be active this hour
+            device = devices[device_idx]
             active.append(device)
             location = locations[device_idx]
             current_time = times[device_idx]
+
             # check the device's charge level
             if self.has_battery(device) and device[BATTERY] < 0.2:
                 # battery is too low -> deactivate
@@ -192,6 +194,7 @@ class DataGenerator:
                 removed.append(rmvd)
                 changes.append(lowbattery)
                 continue
+
             # will this device take a trip?
             if random.choices([True, False], weights=weights, k=1)[0]:
                 # yes, it will -- sometime this hour
@@ -200,13 +203,14 @@ class DataGenerator:
                                                 reference_time=current_time,
                                                 max_td=self.TD_HOUR)
                 changes.extend(status)
-                trips.append({**device, **trip})
+                trips.append(trip)
                 # update the device's time and location from the trip's end event
                 times[device_idx] = status[-1][EVENT_TIME]
                 locations[device_idx] = status[-1][EVENT_LOC]
             elif self.has_battery(device):
                 # no, it won't take a trip -- leak some power anyway
                 self.drain_battery(device, rate=random.uniform(0, 0.05))
+
         # return all the data for this hour
         return (active,
                 [times[devices.index(a)] for a in active],
@@ -221,25 +225,32 @@ class DataGenerator:
         for each of the :devices:.
         """
         service_changes = []
+
         # device placement starts before operation open time
         # -7200 seconds == previous 2 hours from start
         offset = timedelta(seconds=-7200)
         for device in devices:
             # somewhere in the previous :offset:
             event_time = random_date_from(start_time, min_td=offset)
+            point = point_within(self.boundary)
+            feature = to_feature(point, properties=dict(timestamp=event_time))
+
             # the service_change details
             service_start = \
                 self.status_change_event(device,
                                          event_type="available",
                                          event_type_reason="service_start",
                                          event_time=event_time,
-                                         event_location=point_within(self.boundary),
+                                         event_location=feature,
                                          associated_trips=[])
+
             # reset the battery for electric devices
             if self.has_battery(device):
                 self.recharge_battery(device)
+            
             # combine with device details and append
             service_changes.append({**device, **service_start})
+
         return service_changes
 
     def end_service(self, devices, end_time, locations=None):
@@ -249,27 +260,33 @@ class DataGenerator:
         If :locations: are provided, use the corresponding location for each device.
         """
         service_changes = []
+
         # device pickup likely doesn't happen right at close time
         # +7200 seconds == next 2 hours after close
         offset = timedelta(seconds=7200)
         for device in devices:
             # somewhere in the next :offset:
             event_time = random_date_from(end_time, max_td=offset)
+
             # use the device's index for the locations if provided
             # otherwise generate a random event_location
             if locations is None:
-                event_location = point_within(self.boundary)
+                point = point_within(self.boundary)
             else:
-                event_location = locations[devices.index(device)]
+                point = extract_point(locations[devices.index(device)])
+
             # the service_change details
+            feature = to_feature(point, properties=dict(timestamp=event_time))
             service_end = \
                 self.status_change_event(device,
                                          event_type="removed",
                                          event_type_reason="service_end",
                                          event_time=event_time,
-                                         event_location=event_location)
+                                         event_location=feature)
+
             # combine with device details and append
             service_changes.append({**device, **service_end})
+
         return service_changes
 
     def device_trip(self, device, event_time=None, event_location=None,
@@ -280,9 +297,9 @@ class DataGenerator:
 
         :event_time: is the time the trip should start
 
-        :event_location: is the point the trip should start
+        :event_location: is the location (Feature) the trip should start
         
-        :end_location: is the point the trip should end
+        :end_location: is the location (Feature) the trip should end
         
         :reference_time: is the 0-point around which to calculate a random start time
             - :min_td: the minimum time from :reference_time:
@@ -296,33 +313,46 @@ class DataGenerator:
         """
         if (event_time is None) and (reference_time is not None):
             event_time = random_date_from(reference_time, min_td=min_td, max_td=max_td)
+
         if event_location is None:
-            event_location = point_within(self.boundary)
+            point = point_within(self.boundary)
+            event_location = to_feature(point, properties=dict(timestamp=event_time))
+
         if speed is None:
             speed = self.speed
+
         # begin the trip
         status_changes = [self.start_trip(device, event_time, event_location)]
+
         # random trip duration (in seconds)
         # the gamma distribution is referenced in the literature,
         # see: https://static.tti.tamu.edu/tti.tamu.edu/documents/17-1.pdf
         # experimenting with the scale factors led to these parameterizations, * 60 to get seconds
         alpha, beta = 3, 4.5
         trip_duration = random.gammavariate(alpha, beta) * 60
+
         # account for traffic, turns, etc.
         trip_distance = trip_duration * speed * 0.8
+
         # Model the accuracy as a rayleigh distribution with median ~5m
         accuracy = scipy.stats.rayleigh.rvs(scale=5)
+
+        # drain the battery according to the speed and distance traveled
         if self.has_battery(device):
-            # drain the battery according to the speed and distance traveled
             amount = speed / 100
             rate = trip_distance / (math.sqrt(trip_distance) * 200)
             self.drain_battery(device, amount=amount, rate=rate)
+
         # calculate out the ending time and location
         end_time = event_time + timedelta(seconds=trip_duration)
         if end_location is None:
-            end_location = point_nearby(event_location, trip_distance)
+            start_point = extract_point(event_location)
+            end_point = point_nearby(start_point, trip_distance)
+            end_location = to_feature(end_point, properties=dict(timestamp=end_time))
+
         # generate the route object
-        route = self.trip_route(device, event_time, event_location, end_time, end_location)
+        route = self.trip_route(event_location, end_location)
+
         # and finally the trip object
         trip = dict(
             accuracy=int(accuracy),
@@ -333,27 +363,36 @@ class DataGenerator:
             start_time=event_time,
             end_time=end_time
         )
+
         # add a parking_verification_url?
         if random.choice([True, False]):
             trip.update(parking_verification_url=random_file_url(device["provider_name"]))
+
         # add a standard_cost?
         if random.choice([True, False]):
             # $1.00 to start and $0.15 a minute thereafter
             trip.update(standard_cost=(100 + (math.floor(trip_duration/60) - 1) * 15))
+
         # add an actual cost?
         if random.choice([True, False]):
             # randomize an actual_cost
             # $0.75 - $1.50 to start, and $0.12 - $0.20 a minute thereafter...
             start, rate = random.randint(75, 150), random.randint(12, 20)
             trip.update(actual_cost=(start + (math.floor(trip_duration/60) - 1) * rate))
+
         # end the trip
         status_changes.append(self.end_trip(device, end_time, end_location))
+
         # merge the device info into the trip
         trip = {**device, **trip}
-        # battery info is not part of the trip
-        if self.has_battery(trip):
-            del trip[BATTERY]
 
+        # cleanup leftover fields not part of a trip
+        if BATTERY in trip:
+            del trip[BATTERY]
+        if EVENT_TIME in trip:
+            del trip[EVENT_TIME]
+
+        # return a list of the status changes and the trip
         return [{**device, **sc} for sc in status_changes], trip
 
     def start_trip(self, device, event_time, event_location):
@@ -368,17 +407,11 @@ class DataGenerator:
             event_location=event_location
         )
 
-    def trip_route(self, device, start_time, start_location, end_time, end_location):
-        features = []
-        for e in [(start_time, start_location), (end_time, end_location)]:
-            features.append(
-                dict(type="Feature",
-                     properties=dict(timestamp=e[0]),
-                     geometry=dict(type="Point",
-                                   coordinates=[e[1].x, e[1].y]
-                     )
-                )
-            )
+    def trip_route(self, start_location, end_location):
+        """
+        Create GeoJSON FeatureCollection for the trip's `route`.
+        """
+        features = [start_location, end_location]
         return dict(type="FeatureCollection", features=features)
 
     def end_trip(self, device, event_time, event_location):
@@ -432,13 +465,15 @@ class DataGenerator:
 
             if event_locations is None:
                 # random point
-                event_location = point_within(self.boundary)
+                point = point_within(self.boundary)
+                event_location = to_feature(point, properties=dict(timestamp=event_time))
             elif len(event_locations) == len(devices):
-                # corresponding point
+                # corresponding location
                 event_location = event_locations[devices.index(device)]
             else:
-                # given point
+                # given location
                 event_location = event_locations
+
             # create the event for this device
             service_changes.append(self.device_recharged(device, event_time, event_location))
 
@@ -496,3 +531,18 @@ class DataGenerator:
         """
         if self.has_battery(obj):
             obj[BATTERY] = (obj[BATTERY] - amount) * (1 - rate)
+
+    def make_payload(self, status_changes=None, trips=None):
+        """
+        Craft the full MDS Provider payload for either :status_changes: or :trips:.
+        """
+        payload = dict(version=mds.VERSION())
+
+        if status_changes is not None:
+            payload["data"] = dict(status_changes=status_changes)
+
+        if trips is not None:
+            payload["data"] = dict(trips=trips)
+
+        return payload
+

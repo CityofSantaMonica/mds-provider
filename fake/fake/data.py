@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
-import geometry
+from fake.geometry import to_feature
 import json
 from shapely.geometry import Point, Polygon
 import random
 import string
 import uuid
+
 
 def random_date_from(date,
                      min_td=timedelta(seconds=0),
@@ -37,7 +38,7 @@ def random_file_url(company):
 class CustomJsonEncoder(json.JSONEncoder):
     """
     Provides json encoding for some special types:
-        - datetime -> Unix timestamp
+        - datetime -> date_format or string
         - Point/Polygon -> GeoJSON Feature
         - tuple -> list
         - UUID -> str
@@ -53,6 +54,7 @@ class CustomJsonEncoder(json.JSONEncoder):
         if "date_format" in kwargs:
             self.date_format = kwargs["date_format"]
             del kwargs["date_format"]
+
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
     def default(self, obj):
@@ -65,10 +67,15 @@ class CustomJsonEncoder(json.JSONEncoder):
                 return obj.strftime(self.date_format)
             else:
                 return str(obj)
+
         if isinstance(obj, Point) or isinstance(obj, Polygon):
-            return geometry.to_feature(obj)
+            return to_feature(obj)
+
         if isinstance(obj, tuple):
             return list(obj)
+
         if isinstance(obj, uuid.UUID):
             return str(obj)
+
         return json.JSONEncoder.default(self, obj)
+
