@@ -27,6 +27,10 @@ setup(
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
+    install_requires=[
+        "jsonschema",
+        "requests"
+    ],
     classifiers=[
         "Environment :: Docker",
         "Intended Audience :: Developers",
