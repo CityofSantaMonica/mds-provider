@@ -17,7 +17,7 @@ class Provider():
         self.url = kwargs["url"].rstrip("/")
         self.mds_api_url = kwargs["mds_api_url"].rstrip("/")
 
-        for k,v in kwargs:
+        for k,v in kwargs.items():
             setattr(self, k, v)
 
     def __repr__(self):
