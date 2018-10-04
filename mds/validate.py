@@ -6,8 +6,8 @@ import requests
 import urllib
 
 
-SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/master/provider/{}.json"
-
+SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
+DEFAULT_REF = "master"
 
 def isurl(check):
     """
@@ -16,9 +16,9 @@ def isurl(check):
     parts = urllib.parse.urlparse(check)
     return parts.scheme and parts.netloc
 
-def validate_schema_instance(instance_source, schema_type):
+def validate_schema_instance(instance_source, schema_type, ref=DEFAULT_REF):
     """
-    Validate the given :instance_source: (see notes below) against the current MDS Provider schema of the given :schema_type:.
+    Validate the given :instance_source: against the current MDS Provider schema of the given :schema_type:.
 
     :instance_source: can be any of:
         - JSON text (e.g. str)
@@ -30,13 +30,18 @@ def validate_schema_instance(instance_source, schema_type):
         - status_changes
         - trips
 
-    Invalid instances will raise one or more Exceptions. Valid instances validate silently.
+    :ref: optionally checks the schema at the version specified, which could be any of:
+        - git branch name
+        - commit hash (long or short)
+        - git tag
+
+    Invalid instances raise one or more Exceptions. Valid instances validate silently.
     """
     if schema_type not in [mds.STATUS_CHANGES, mds.TRIPS]:
         raise ValueError("Invalid schema type '{}'".format(schema_type))
 
     # acquire the schema
-    schema_file = SCHEMA_ROOT.format(schema_type)
+    schema_file = SCHEMA_ROOT.format(ref, schema_type)
     schema = requests.get(schema_file).json()
 
     # and the instance
@@ -55,27 +60,43 @@ def validate_schema_instance(instance_source, schema_type):
     # do validation, raising Exceptions for invalid schemas
     jsonschema.validate(instance, schema)
 
-def validate_status_changes(source):
+def validate_status_changes(source, ref=DEFAULT_REF):
     """
-    Validate the given :source: (see notes below) against the current MDS Provider Status Changes schema.
+    Validate the given :instance_source: against the current MDS Provider schema of the given :schema_type:.
 
     :source: can be any of:
         - JSON text (e.g. str)
         - JSON object (e.g. dict)
         - path to a file with JSON text
         - URL to a file of JSON text
-    """
-    validate_schema_instance(source, mds.STATUS_CHANGES)
 
-def validate_trips(source):
+    :ref: optionally checks the schema at the version specified, which could be any of:
+        - git branch name
+        - commit hash (long or short)
+        - git tag
+
+    By default, check `master`.
+
+    Invalid instances raise one or more Exceptions. Valid instances validate silently.
     """
-    Validate the given :source: (see notes below) against the current MDS Provider Trips schema.
+    validate_schema_instance(source, mds.STATUS_CHANGES, ref)
+
+def validate_trips(source, ref=DEFAULT_REF):
+    """
+    Validate the given :instance_source: against the current MDS Provider schema of the given :schema_type:.
 
     :source: can be any of:
         - JSON text (e.g. str)
         - JSON object (e.g. dict)
         - path to a file with JSON text
         - URL to a file of JSON text
+
+    :ref: optionally checks the schema at the version specified, which could be any of:
+        - git branch name
+        - commit hash (long or short)
+        - git tag
+
+    By default, check `master`.
     """
-    validate_schema_instance(source, mds.TRIPS)
+    validate_schema_instance(source, mds.TRIPS, ref)
 
