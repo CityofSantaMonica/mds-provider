@@ -14,8 +14,8 @@ class Provider():
     def __init__(self, **kwargs):
         self.provider_name = kwargs["provider_name"]
         self.provider_id = uuid.UUID(kwargs["provider_id"])
-        self.url = kwargs["url"].rstrip("/")
-        self.mds_api_url = kwargs["mds_api_url"].rstrip("/")
+        self.url = kwargs["url"]
+        self.mds_api_url = kwargs["mds_api_url"]
 
         for k,v in kwargs.items():
             setattr(self, k, v)
