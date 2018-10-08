@@ -1,11 +1,16 @@
+"""
+Generating fake MDS Provider data.
+"""
+
 from datetime import datetime, timedelta
-from fake.data import random_date_from, random_string, random_file_url
-from fake.geometry import point_within, point_nearby, to_feature, extract_point
 import math
 import mds
+from mds.json import extract_point, to_feature
+from mds.fake.data import random_date_from, random_string, random_file_url
+from mds.fake.geometry import point_within, point_nearby
 import random
-import uuid
 import scipy.stats
+import uuid
 
 
 BATTERY = "battery_pct"
@@ -14,7 +19,7 @@ EVENT_TIME = "event_time"
 PROPULSION = "propulsion_type"
 
 
-class DataGenerator:
+class ProviderDataGenerator:
     """
     Generates fake MDS Provider data.
     """

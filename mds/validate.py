@@ -100,3 +100,23 @@ def validate_trips(source, ref=DEFAULT_REF):
     """
     validate_schema_instance(source, mds.TRIPS, ref)
 
+def validate_files(files, validator):
+    """
+    Runs the given schema :validator: function against all :files:.
+
+    Returns a tuple:
+        - a list of valid files
+        - a map of invalid files => reported Exceptions
+    """
+    valid = []
+    invalid = {}
+
+    for f in files:
+        try:
+            validator(f)
+            valid.append(f)
+        except Exception as e:
+            invalid[f] = e
+
+    return valid, invalid
+

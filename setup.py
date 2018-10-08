@@ -28,8 +28,16 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
+        "Fiona",
+        "geopandas",
         "jsonschema",
-        "requests"
+        "numpy",
+        "pandas",
+        "psycopg2-binary",
+        "requests",
+        "scipy",
+        "Shapely",
+        "sqlalchemy"
     ],
     classifiers=[
         "Environment :: Docker",

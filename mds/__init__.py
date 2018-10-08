@@ -1,3 +1,7 @@
+"""
+Package for working with Mobility Data Specification Provider data.
+"""
+
 from mds._version import __version__
 
 

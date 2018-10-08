@@ -19,6 +19,7 @@ can be found in a container's `README.md`.
 | [`client`](client/)  | [pgAdmin4][pgadmin] web client |
 | [`fake`](fake/)    | Generate fake MDS `provider` data for testing and development |
 | [`initdb`](initdb/)  | Initialize an MDS `provider` database |
+| [`load`](load/)  | Load from `provider` data files into a database |
 | [`server`](server/)  | Local [postgres][postgres] database server |
 
 ### 1. Create an `.env` file

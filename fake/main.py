@@ -1,10 +1,12 @@
 import argparse
-from fake.data import random_string, CustomJsonEncoder
 from datetime import datetime, timedelta
-from fake import geometry, provider
 import json
 import math
 import mds
+from mds.fake import geometry
+from mds.fake.data import random_string
+from mds.fake.provider import ProviderDataGenerator
+from mds.json import parse_boundary, CustomJsonEncoder
 import os
 import random
 import time
@@ -143,10 +145,10 @@ if __name__ == "__main__":
 
     print("Parsing boundary file: {}".format(boundary_file))
     t1 = time.time()
-    boundary = geometry.parse_boundary(boundary_file, downloads=outputdir)
+    boundary = parse_boundary(boundary_file, downloads=outputdir)
     print("Valid boundary: {} ({} s)".format(boundary.is_valid, time.time() - t1))
 
-    gen = provider.DataGenerator(
+    gen = ProviderDataGenerator(
             boundary=boundary,
             speed=speed,
             vehicle_types=args.vehicle_types,

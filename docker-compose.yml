@@ -9,30 +9,6 @@ services:
       - PGADMIN_DEFAULT_PASSWORD
     ports:
       - "${PGADMIN_HOST_PORT}:80"
-  server:
-    build: ./server
-    image: mds_provider_server
-    container_name: mds_provider_server
-    environment:
-      - POSTGRES_DB
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-    ports:
-      - "5432:5432"
-  initdb:
-    build: ./initdb
-    image: mds_provider_initdb
-    container_name: mds_provider_initdb
-    depends_on:
-      - server
-    environment:
-      - POSTGRES_HOSTNAME
-      - POSTGRES_DB
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - MDS_DB
-      - MDS_USER
-      - MDS_PASSWORD
   fake:
     build: ./fake
     image: mds_provider_fake
@@ -47,6 +23,35 @@ services:
     user: root
     volumes:
       - data:/home/${NB_USER}/work/mds/data
+  initdb:
+    build: ./initdb
+    image: mds_provider_initdb
+    container_name: mds_provider_initdb
+    depends_on:
+      - server
+    environment:
+      - POSTGRES_HOSTNAME
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - MDS_DB
+      - MDS_USER
+      - MDS_PASSWORD
+  load:
+    build: ./load
+    image: mds_provider_load
+    container_name: mds_provider_load
+    environment:
+      - POSTGRES_HOSTNAME
+      - POSTGRES_HOST_PORT
+      - MDS_DB
+      - MDS_USER
+      - MDS_PASSWORD
+    ports:
+      - "${NB_LOAD_HOST_PORT}:8888"
+    user: root
+    volumes:
+      - data:/home/${NB_USER}/work/mds/data
   pull:
     build: ./pull
     image: mds_provider_pull
@@ -56,6 +61,16 @@ services:
     user: root
     volumes:
       - data:/home/${NB_USER}/work/mds/data
+  server:
+    build: ./server
+    image: mds_provider_server
+    container_name: mds_provider_server
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+    ports:
+      - "5432:5432"
 
 volumes:
   data:

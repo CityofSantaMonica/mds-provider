@@ -14,5 +14,10 @@ CREATE TABLE status_changes (
 );
 
 ALTER TABLE status_changes
-    ADD CONSTRAINT unique_event_time
-    UNIQUE (provider_id, device_id, vehicle_id, event_time);
+    ADD CONSTRAINT unique_event
+    UNIQUE (provider_id,
+            device_id,
+            event_type,
+            event_type_reason,
+            event_time
+    );
