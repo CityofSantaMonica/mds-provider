@@ -4,6 +4,8 @@ Tools for working with [MDS `provider`][provider] data.
 
 Developed and tested with Python 3.7+.
 
+See [`mds-provider-services`](https://github.com/CityofSantaMonica/mds-provider-services) for real-world usage of many of these tools.
+
 ## Installation
 
 Install with `pip`:
