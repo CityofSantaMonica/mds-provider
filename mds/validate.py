@@ -1,3 +1,7 @@
+"""
+Validate MDS Provider data against the official JSON Schema.
+"""
+
 import json
 import jsonschema
 import os

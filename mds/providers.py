@@ -1,3 +1,7 @@
+"""
+Work with the official MDS Providers registry.
+"""
+
 import csv
 import requests
 from uuid import UUID

@@ -1,59 +1,37 @@
 # mds-provider
 
-Services for working with [MDS `provider`][provider] data.
+Tools for working with [MDS `provider`][provider] data.
 
-## Local development
+Developed and tested with Python 3.7+.
 
-Requires both [Docker][docker] and [Docker Compose][compose].
+## Installation
 
-`docker-compose` commands below should be run from the root of this repository,
-where the `docker-compose.yml` file lives.
+Install with `pip`:
 
-### Container organization
+```bash
+$ pip install -e git+https://github.com/CityofSantaMonica/mds-provider@master#egg=mds_provider
+```
 
-The containers are organized around specific functions. More detailed explanation
-can be found in a container's `README.md`.
+Or with `python` directly:
 
-| container | description |
+```
+$ git clone https://github.com/CityofSantaMonica/mds-provider.git
+$ cd mds-provider
+$ python setup.py install
+```
+
+## Package organization
+
+| module | description |
 | --------- | ----------- |
-| [`client`](client/)  | [pgAdmin4][pgadmin] web client |
-| [`fake`](fake/)    | Generate fake MDS `provider` data for testing and development |
-| [`initdb`](initdb/)  | Initialize an MDS `provider` database |
-| [`load`](load/)  | Load from `provider` data files into a database |
-| [`server`](server/)  | Local [postgres][postgres] database server |
+| [`mds`](mds/__init__.py) | Tools for working with Mobility Data Specification `provider` data |
+| [`api`](mds/api/) | Request `provider` data from compatible API endpoints |
+| [`db`](mds/db/) | Load `provider` data into a database |
+| [`fake`](mds/fake/) | Generate fake `provider` data for testing and development |
+| [`json`](mds/json.py) | Work with `provider` data as (Geo)JSON files and objects |
+| [`providers`](mds/providers.py) | Work with the official [MDS Providers registry][registry] |
+| [`validate`](mds/validate.py) | Validate `provider` data against the official [JSON Schema][schema] |
 
-### 1. Create an `.env` file
-
-Copy the sample and edit as necessary. Compose automatically sources this
-environment file for `docker-compose` commands.
-
-```bash
-$ cp .env.sample .env
-```
-
-### 2(a). Start (all of the) containers
-
-Build and start all of the containers according to the dependencies outlined in
-[`docker-compose.yml`](docker-compose.yml).
-
-```bash
-$ docker-compose up -d --build --force-recreate
-```
-
-### 2(b). Start (individual) containers
-
-See the `README.md` file in each container folder for more details.
-
-### 3. Stop the containers
-
-Shutdown and completely erase the containers and their resources.
-
-```bash
-$ docker-compose down
-```
-
-[compose]: https://docs.docker.com/compose/overview/
-[docker]: https://www.docker.com/
-[pgadmin]: https://www.pgadmin.org/
-[postgres]: https://www.postgresql.org/
 [provider]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider
+[registry]: https://github.com/CityofLosAngeles/mobility-data-specification/blob/master/providers.csv
+[schema]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/generate_schema

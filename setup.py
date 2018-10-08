@@ -20,7 +20,7 @@ def get_version():
 setup(
     name="mds_provider",
     version=get_version(),
-    description="Services for working with MDS provider data",
+    description="Tools for working with Mobility Data Specification Provider data",
     long_description=open(READMEFILE).read(),
     url="https://github.com/CityofSantaMonica/mds-provider",
     author="City of Santa Monica and contributors",

@@ -1,5 +1,2 @@
-*.env
-*.ipynb*
-
 .vscode/
 __pycache__/
