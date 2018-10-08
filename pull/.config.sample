@@ -1,0 +1,78 @@
+##
+# Provider configuration file
+#
+# See the very bottom of this file for a concise, realistic example
+##
+
+##
+# Global default settings
+##
+[DEFAULT]
+
+    # The git reference (branch name, commit hash, tag) by which MDS is referenced.
+    ref = master
+
+##
+# Provider-specific settings
+#
+# Replace `provider_id` below with a Provider's UUID, then add the required settings.
+#
+# Create as many provider sections as needed.
+##
+
+## 
+# The provider's UUID from
+# https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/master/providers.csv
+##
+[provider_id]
+
+    # The authorization token to use for this Provider
+    # Must specify this setting OR client_id + client_secret (see below)
+    bearer_token =
+
+    # Settings for an OAuth 2.0 client_credentials grant flow
+    # This flow obtains a limited-time bearer token, and must be
+    # periodically re-run. Check with the Provider for details.
+    token_url =
+    client_id =
+    client_secret =
+    # One or more (separated by commas) scopes requested as part of this grant flow
+    scope =
+
+    # A suffix that comes after the mds_api_url and before the API endpoint for this Provider
+    # Used for customized URLs that include e.g. an Agency name or geographic region
+    mds_api_suffix =
+
+##
+# Below is a more realistic example of what a config file might look like.
+#
+# The example configures 2 different Providers, each with a distinct authorization schemes
+##
+
+##
+# This Provider uses the simpler Bearer Token style.
+#
+# Includes an API suffix and reference a specific version.
+#
+# Note we can override official Provider Registry data
+# e.g. a different mds_api_url for testing purposes.
+##
+
+# [6d9ec5e6-8110-4ad7-a5f2-7a2ce45bc1de]
+#     bearer_token = QXIkpmTeFeKrzFRpFGGg
+#     mds_api_suffix = agency_xyz
+#     ref = 0.2.0
+#     mds_api_url = https://testing.providerA.co/mds
+
+##
+# This Provider uses the more complex OAuth client_credentials style.
+# Usually this involves registering an application with the Provider's platform,
+# which generates the client_id and client_secret below. Talk to the Provider for
+# more details.
+##
+
+# [72e0b5f4-de11-4b9f-b52f-31fde095ff2f]
+#     token_url = https://developers.providerB.co/api/token
+#     client_id = IjbPIvLWUMej7RMbUykH
+#     client_secret = x0N9e805EGfzfmqDTlnrNhRxub09bllRpLKKE64E
+#     scope = mds.status_changes,mds.trips

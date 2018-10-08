@@ -1,6 +1,6 @@
 import csv
 import requests
-import uuid
+from uuid import UUID
 
 
 PROVIDER_REGISTRY = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/providers.csv"
@@ -11,20 +11,38 @@ class Provider():
     """
     A simple model for an entry in the Provider registry.
     """
-    def __init__(self, **kwargs):
-        self.provider_name = kwargs["provider_name"]
-        self.provider_id = uuid.UUID(kwargs["provider_id"])
-        self.url = kwargs["url"]
-        self.mds_api_url = kwargs["mds_api_url"]
+    def __init__(self, provider_name, provider_id, url, mds_api_url, **kwargs):
+        self.provider_name = provider_name
+        self.provider_id = provider_id if isinstance(provider_id, UUID) else UUID(provider_id)
+        self.url = url
+        self.mds_api_url = mds_api_url
 
         for k,v in kwargs.items():
             setattr(self, k, v)
 
     def __repr__(self):
-        return f"""<Provider name:{self.provider_name}
-             id:{str(self.provider_id)}
-             url:{self.url}
-             api_url:{self.mds_api_url}>"""
+        return f"<Provider name:'{self.provider_name}' api_url:'{self.mds_api_url}' id:'{str(self.provider_id)}'>"
+
+    def configure(self, config, use_id=False):
+        """
+        Merge Provider-specific data from :config: with this provider.
+
+        Returns a new Provider with the merged data.
+
+        :use_id: is a flag that, when True, will lookup this Provider by provider_id inside the :config:
+        (e.g. for using a dict of configuration for different Providers). If the provider_id isn't found,
+        returns this Provider un-modified.
+        """
+        if use_id:
+            if self.provider_id in config:
+                config = config[self.provider_id]
+            elif str(self.provider_id) in config:
+                config = config[str(self.provider_id)]
+            else:
+                return self
+
+        _kwargs = { **vars(self), **config }
+        return Provider(**_kwargs)
 
 
 def get_registry(ref=DEFAULT_REF):
