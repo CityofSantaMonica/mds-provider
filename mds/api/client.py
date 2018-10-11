@@ -30,9 +30,9 @@ class ProviderClient(OAuthClientCredentialsAuth):
         """
         Internal helper to establish an authenticated session with the :provider:.
         """
-        if hasattr(provider, "bearer_token") and not hasattr(provider, "token_url"):
-            # standard bearer token
-            return self.bearer_token_session(provider)
+        if hasattr(provider, "token") and not hasattr(provider, "token_url"):
+            # auth token defined by provider
+            return self.auth_token_session(provider)
         else:
             # OAuth 2.0 client_credentials grant flow
             return self.oauth_session(provider)

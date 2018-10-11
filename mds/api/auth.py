@@ -6,21 +6,22 @@ import requests
 from requests import Session
 
 
-class BearerTokenAuth():
+class AuthorizationToken():
     """
-    Mixin implementing Bearer Token Authorization.
+    Mixin implementing an Authorization token header of the type specified by
+    the provider.
     """
-    def bearer_token_session(self, provider):
+    def auth_token_session(self, provider):
         """
-        Establishes a session with the `Authorization: Bearer :token:` header.
+        Establishes a session with the `Authorization: :auth_type: :token:` header.
         """
         session = Session()
-        session.headers.update({ "Authorization": f"Bearer {provider.bearer_token}" })
+        session.headers.update({ "Authorization": f"{provider.auth_type} {provider.token}" })
 
         return session
 
 
-class OAuthClientCredentialsAuth(BearerTokenAuth):
+class OAuthClientCredentialsAuth(AuthorizationToken):
     """
     Mixin implementing OAuth 2.0 client_credentials grant flow.
     """
@@ -35,7 +36,7 @@ class OAuthClientCredentialsAuth(BearerTokenAuth):
             "scope": provider.scope.split(",")
         }
         r = requests.post(provider.token_url, data=payload)
-        provider.bearer_token = r.json()["access_token"]
+        provider.token = r.json()["access_token"]
 
-        return self.bearer_token_session(provider)
+        return self.auth_token_session(provider)
 
