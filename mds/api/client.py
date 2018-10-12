@@ -48,6 +48,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
     def _request(self, providers, endpoint, params, page):
         """
         Internal helper for sending requests.
+
+        Returns a map of provider => payload(s).
         """
         # create a request url for each provider
         urls = [self._build_url(p, endpoint) for p in providers]
@@ -69,9 +71,9 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
             def __next(payload):
                 """
-                Little helper to get the next URL or None
+                Helper to get the next URL or None
                 """
-                return getattr(payload["links"], "next", None) if "links" in payload else None
+                return payload["links"].get("next") if "links" in payload else None
 
             # get subsequent pages of data
             next = __next(payload)
