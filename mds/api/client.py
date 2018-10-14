@@ -6,20 +6,25 @@ from datetime import datetime
 import json
 import mds
 from mds.api.auth import OAuthClientCredentialsAuth
-from mds.providers import Provider
+from mds.providers import get_registry, Provider
 
 
 class ProviderClient(OAuthClientCredentialsAuth):
     """
     Client for MDS Provider APIs
     """
-    def __init__(self, providers):
+    def __init__(self, providers=None, ref=None):
         """
         Initialize a new ProviderClient object.
 
-            - :providers: List of Providers this client tracks by default
+        :providers: is a list of Providers this client tracks by default. If None is given, downloads and uses the official Provider registry.
+
+        When using the official Providers registry, :ref: could be any of:
+            - git branch name
+            - commit hash (long or short)
+            - git tag
         """
-        self.providers = providers
+        self.providers = providers if providers is not None else get_registry(ref)
 
     def _auth_session(self, provider):
         """

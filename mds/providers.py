@@ -61,7 +61,7 @@ def get_registry(ref=DEFAULT_REF):
     By default, downloads from `master`.
     """
     providers = []
-    url = PROVIDER_REGISTRY.format(ref)
+    url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
 
     with requests.get(url, stream=True) as r:
         lines = (line.decode("utf-8") for line in r.iter_lines())
