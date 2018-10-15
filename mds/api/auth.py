@@ -18,6 +18,10 @@ class AuthorizationToken():
         session = Session()
         session.headers.update({ "Authorization": f"{provider.auth_type} {provider.token}" })
 
+        headers = getattr(provider, "headers", None)
+        if headers:
+            session.headers.update(headers)
+
         return session
 
 
