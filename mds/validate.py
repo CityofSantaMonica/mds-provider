@@ -6,11 +6,11 @@ import json
 import jsonschema
 import os
 import mds
+import mds.schema
 import requests
 import urllib
 
 
-SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
 DEFAULT_REF = "master"
 
 def isurl(check):
@@ -41,12 +41,8 @@ def validate_schema_instance(instance_source, schema_type, ref=DEFAULT_REF):
 
     Invalid instances raise one or more Exceptions. Valid instances validate silently.
     """
-    if schema_type not in [mds.STATUS_CHANGES, mds.TRIPS]:
-        raise ValueError("Invalid schema type '{}'".format(schema_type))
-
     # acquire the schema
-    schema_file = SCHEMA_ROOT.format(ref, schema_type)
-    schema = requests.get(schema_file).json()
+    schema = mds.schema.get_schema(schema_type, ref=ref)
 
     # and the instance
     if isinstance(instance_source, str):
