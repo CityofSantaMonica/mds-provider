@@ -50,12 +50,18 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
         return url
 
-    def _request(self, providers, endpoint, params, page):
+    def _request(self, providers, endpoint, params, paging):
         """
         Internal helper for sending requests.
 
         Returns a map of provider => payload(s).
         """
+        def __next_url(payload):
+            """
+            Helper to get the next URL or None
+            """
+            return payload["links"].get("next") if "links" in payload else None
+
         # create a request url for each provider
         urls = [self._build_url(p, endpoint) for p in providers]
 
@@ -74,18 +80,12 @@ class ProviderClient(OAuthClientCredentialsAuth):
             # track the list of pages per provider
             records[provider] = [payload]
 
-            def __next(payload):
-                """
-                Helper to get the next URL or None
-                """
-                return payload["links"].get("next") if "links" in payload else None
-
             # get subsequent pages of data
-            next = __next(payload)
-            while page and next is not None:
-                payload = session.get(next)
+            next_url = __next_url(payload)
+            while paging and next_url is not None:
+                payload = session.get(next_url)
                 records[provider].extend(payload)
-                next = __next(payload)
+                next_url = __next_url(payload)
 
         return records
 
@@ -100,10 +100,12 @@ class ProviderClient(OAuthClientCredentialsAuth):
                            start_time=None,
                            end_time=None,
                            bbox=None,
-                           page=True,
+                           paging=True,
                            **kwargs):
         """
-        Request Status Changes data. Supported keyword args:
+        Request Status Changes data. Returns a map of provider => list of result(s)
+
+        Supported keyword args:
 
             - `providers`: One or more Providers to issue this request to.
                            The default is to issue the request to all Providers.
@@ -122,8 +124,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
                       bbox=-122.4183,37.7758,-122.4120,37.7858
 
-            - `page`: True (default) to follow paging and request all available data.
-                      False to request only the first page.
+            - `paging`: True (default) to follow paging and request all available data.
+                        False to request only the first page.
         """
         if providers is None:
             providers = self.providers
@@ -138,7 +140,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
         params = { **dict(start_time=start_time, end_time=end_time, bbox=bbox), **kwargs }
 
         # make the request(s)
-        status_changes = self._request(providers, mds.STATUS_CHANGES, params, page)
+        status_changes = self._request(providers, mds.STATUS_CHANGES, params, paging)
 
         return status_changes
 
@@ -149,10 +151,12 @@ class ProviderClient(OAuthClientCredentialsAuth):
                   start_time=None,
                   end_time=None,
                   bbox=None,
-                  page=True,
+                  paging=True,
                   **kwargs):
         """
-        Request Trips data. Supported keyword args:
+        Request Trips data. Returns a map of provider => list of result(s).
+
+        Supported keyword args:
 
             - `providers`: One or more Providers to issue this request to.
                            The default is to issue the request to all Providers.
@@ -175,8 +179,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
                       bbox=-122.4183,37.7758,-122.4120,37.7858
 
-            - `page`: True (default) to follow paging and request all available data.
-                      False to request only the first page.
+            - `paging`: True (default) to follow paging and request all available data.
+                        False to request only the first page.
         """
         if providers is None:
             providers = self.providers
@@ -198,7 +202,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
         }
 
         # make the request(s)
-        trips = self._request(providers, mds.TRIPS, params, page)
+        trips = self._request(providers, mds.TRIPS, params, paging)
 
         return trips
 
