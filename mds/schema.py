@@ -5,7 +5,9 @@ Work with the MDS Provider JSON Schemas.
 import json
 import jsonschema
 import mds
+import os
 import requests
+import urllib
 
 
 class ProviderSchema():
@@ -30,6 +32,14 @@ class ProviderSchema():
         return ProviderSchema(mds.TRIPS, ref=ref)
 
     def __init__(self, schema_type, ref=DEFAULT_REF):
+        """
+        Initialize a new ProviderSchema of the given :schema_type:.
+
+        :ref: optionally checks the schema at the version specified, which could be any of:
+            - git branch name
+            - commit hash (long or short)
+            - git tag
+        """
         if schema_type not in [mds.STATUS_CHANGES, mds.TRIPS]:
             raise ValueError("Invalid schema type '{}'".format(schema_type))
 
@@ -100,4 +110,39 @@ class ProviderSchema():
         """
         definition = self.schema["definitions"]["vehicle_type"]
         return definition["items"]["enum"]
+
+    def validate(self, instance_source):
+        """
+        Validate the given :instance_source: against this schema.
+
+        :instance_source: can be any of:
+            - JSON text (e.g. str)
+            - JSON object (e.g. dict)
+            - path to a file with JSON text
+            - URL to a file of JSON text
+
+        Invalid instances raise one or more Exceptions. Valid instances validate silently.
+        """
+        def __isurl(check):
+            """
+            Return True if :check: is a valid URL, False otherwise.
+            """
+            parts = urllib.parse.urlparse(check)
+            return parts.scheme and parts.netloc
+
+        # and the instance
+        if isinstance(instance_source, str):
+            if os.path.isfile(instance_source):
+                instance = json.load(open(instance_source, "r"))
+            elif __isurl(instance_source):
+                instance = requests.get(instance_source).json()
+            else:
+                instance = json.loads(instance_source)
+        elif isinstance(instance_source, dict):
+            instance = instance_source
+        else:
+            raise TypeError("Unrecognized :instance_source: format. Recognized formats: file path/URL, JSON string, dict")
+
+        # do validation, raising Exceptions for invalid schemas
+        jsonschema.validate(instance, self.schema)
 

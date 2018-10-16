@@ -32,8 +32,8 @@ $ python setup.py install
 | [`fake`](mds/fake/) | Generate fake `provider` data for testing and development |
 | [`json`](mds/json.py) | Work with `provider` data as (Geo)JSON files and objects |
 | [`providers`](mds/providers.py) | Work with the official [MDS Providers registry][registry] |
-| [`validate`](mds/validate.py) | Validate `provider` data against the official [JSON Schema][schema] |
+| [`schema`](mds/schema.py) | Work with the official MDS Provider JSON schemas |
+
 
 [provider]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider
 [registry]: https://github.com/CityofLosAngeles/mobility-data-specification/blob/master/providers.csv
-[schema]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/generate_schema
