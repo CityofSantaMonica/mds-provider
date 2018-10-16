@@ -35,7 +35,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES):
         propulsion_type::propulsion_types[],
         event_type::event_types,
         event_type_reason::event_type_reasons,
-        to_timestamp(event_time),
+        to_timestamp(event_time) AT TIME ZONE 'UTC',
         event_location::JSON,
         battery_pct,
         associated_trips::UUID[]
@@ -80,8 +80,8 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS):
         trip_distance,
         route::JSON,
         accuracy,
-        to_timestamp(start_time),
-        to_timestamp(end_time),
+        to_timestamp(start_time) AT TIME ZONE 'UTC',
+        to_timestamp(end_time) AT TIME ZONE 'UTC',
         parking_verification_url,
         standard_cost,
         actual_cost
