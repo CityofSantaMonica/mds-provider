@@ -8,44 +8,96 @@ import mds
 import requests
 
 
-SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
-DEFAULT_REF = "master"
+class ProviderSchema():
+    """
+    Class for acquiring and working with an MDS Provider JSON Schema.
+    """
+    SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
+    DEFAULT_REF = "master"
 
-def get_schema(schema_type, ref=DEFAULT_REF):
-    """
-    Gets the schema of type :schema_type: at :ref: or the default (`master`).
-    """
-    if schema_type not in [mds.STATUS_CHANGES, mds.TRIPS]:
-        raise ValueError("Invalid schema type '{}'".format(schema_type))
+    @classmethod
+    def StatusChanges(cls, ref=DEFAULT_REF):
+        """
+        Acquires the Status Changes schema.
+        """
+        return ProviderSchema(mds.STATUS_CHANGES, ref=ref)
 
-    # acquire the schema
-    schema_url = SCHEMA_ROOT.format(ref, schema_type)
-    return requests.get(schema_url).json()
+    @classmethod
+    def Trips(cls, ref=DEFAULT_REF):
+        """
+        Acquires the Trips schema.
+        """
+        return ProviderSchema(mds.TRIPS, ref=ref)
 
-def get_status_changes_schema(ref=DEFAULT_REF):
-    """
-    Gets the Status Changes schema at :ref: or the default (`master`).
-    """
-    return get_schema(mds.STATUS_CHANGES, ref)
+    def __init__(self, schema_type, ref=DEFAULT_REF):
+        if schema_type not in [mds.STATUS_CHANGES, mds.TRIPS]:
+            raise ValueError("Invalid schema type '{}'".format(schema_type))
 
-def get_trips_schema(ref=DEFAULT_REF):
-    """
-    Gets the Trips schema at :ref: or the default (`master`).
-    """
-    return get_schema(mds.TRIPS, ref)
+        # acquire the schema
+        schema_url = self.SCHEMA_ROOT.format(ref, schema_type)
+        self.schema = requests.get(schema_url).json()
+        self.schema_type = schema_type
 
-def get_optional_fields(schema_type, ref=DEFAULT_REF):
-    """
-    Returns the list of optional field names for the given :schema_type: at the given :ref:.
-    """
-    schema = get_schema(schema_type, ref=ref)
-    item_schema = schema["properties"]["data"]["properties"][schema_type]["items"]
-    item_required = item_schema["required"]
-    item_props = item_schema["properties"].keys()
-    return [ip for ip in item_props if ip not in item_required]
+    def event_types(self):
+        """
+        Get the list of valid event types for this schema.
+        """
+        return list(self.event_type_reasons().keys())
 
-def get_required_fields(schema_type, ref=DEFAULT_REF):
-    schema = get_schema(schema_type, ref=ref)
-    item_schema = schema["properties"]["data"]["properties"][schema_type]["items"]
-    return item_schema["required"]
+    def event_type_reasons(self):
+        """
+        Get a dictionary of event_type => event_type_reasons for this schema.
+        """
+        etr = {}
+        if self.schema_type is not mds.STATUS_CHANGES:
+            return etr
+
+        item_schema = self.item_schema()
+        for oneOf in item_schema["oneOf"]:
+            props = oneOf["properties"]
+            if "event_type" in props and "event_type_reason" in props:
+                event_type = props["event_type"]["enum"][0]
+                event_type_reasons = props["event_type_reason"]["enum"]
+                etr[event_type] = event_type_reasons
+
+        return etr
+
+    def item_schema(self):
+        """
+        Get the schema for items in this schema's data array.
+
+        e.g. the schema for the actual record this schema represents (Status Changes or Trips)
+        without all of the metadata envelope.
+        """
+        return self.schema["properties"]["data"]["properties"][self.schema_type]["items"]
+
+    def optional_item_fields(self):
+        """
+        Returns the list of optional field names for items in the data array of this schema.
+        """
+        item_schema = self.item_schema()
+        item_required = item_schema["required"]
+        item_props = item_schema["properties"].keys()
+        return [ip for ip in item_props if ip not in item_required]
+
+    def required_item_fields(self):
+        """
+        Returns the list of required field names for items in the data array of this schema.
+        """
+        item_schema = self.item_schema()
+        return item_schema["required"]
+
+    def propulsion_types(self):
+        """
+        Get the list of valid propulsion type values for this schema.
+        """
+        definition = self.schema["definitions"]["propulsion_type"]
+        return definition["items"]["enum"]
+
+    def vehicle_types(self):
+        """
+        Get the list of valid propulsion type values for this schema.
+        """
+        definition = self.schema["definitions"]["vehicle_type"]
+        return definition["items"]["enum"]
 

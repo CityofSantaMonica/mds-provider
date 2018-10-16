@@ -8,6 +8,7 @@ import mds
 from mds.json import extract_point, to_feature
 from mds.fake.data import random_date_from, random_string, random_file_url
 from mds.fake.geometry import point_within, point_nearby
+from mds.schema import ProviderSchema
 import random
 import scipy.stats
 import uuid
@@ -39,6 +40,8 @@ class ProviderDataGenerator:
             - :vehicle_types: the vehicle_types to use for generation
             - :propulsion_types: the propulsion_types to use for generation
         """
+        schema = ProviderSchema(mds.TRIPS)
+
         key = "boundary"
         if not key in kwargs:
             raise("A geographic boundary is required")
@@ -53,14 +56,14 @@ class ProviderDataGenerator:
             self.vehicle_types = kwargs[key].split(",")\
                 if isinstance(kwargs[key], str) else kwargs[key]
         else:
-            self.vehicle_types = mds.VEHICLE_TYPES
+            self.vehicle_types = schema.vehicle_types()
 
         key = "propulsion_types"
         if key in kwargs and kwargs[key] is not None:
             self.propulsion_types = kwargs[key].split(",")\
                 if isinstance(kwargs[key], str) else kwargs[key]
         else:
-            self.propulsion_types = mds.PROPULSION_TYPES
+            self.propulsion_types = schema.propulsion_types()
 
     def devices(self, N, provider):
         """
