@@ -5,13 +5,13 @@ SQL scripts for MDS Provider database CRUD.
 import mds
 
 
-def insert_status_changes_from(source_table):
+def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES):
     """
     Generate an INSERT INTO statement from :source_table: to the Status Changes table, that
     ignores records that conflict based on existing uniqueness constraints.
     """
     return f"""
-    INSERT INTO {mds.STATUS_CHANGES}
+    INSERT INTO {dest_table}
     (
         provider_id,
         provider_name,
@@ -43,13 +43,13 @@ def insert_status_changes_from(source_table):
     ON CONFLICT DO NOTHING;
     """
 
-def insert_trips_from(source_table):
+def insert_trips_from(source_table, dest_table=mds.TRIPS):
     """
     Generate an INSERT INTO statement from :source_table: to the Trips table, that
     ignores records that conflict based on existing uniqueness constraints.
     """
     return f"""
-    INSERT INTO {mds.TRIPS}
+    INSERT INTO {dest_table}
     (
         provider_id,
         provider_name,
