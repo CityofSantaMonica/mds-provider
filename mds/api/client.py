@@ -62,6 +62,12 @@ class ProviderClient(OAuthClientCredentialsAuth):
             """
             return payload["links"].get("next") if "links" in payload else None
 
+        def __describe(req):
+            print(f"Requested {req.url}, Response Code: {req.status_code}")
+            print("Response Headers:")
+            for k,v in req.headers.items():
+                print(f"{k}: {v}")
+
         # create a request url for each provider
         urls = [self._build_url(p, endpoint) for p in providers]
 
@@ -75,7 +81,9 @@ class ProviderClient(OAuthClientCredentialsAuth):
             session = self._auth_session(provider)
 
             # get the initial page of data
-            payload = session.get(url, params=params).json()
+            r = session.get(url, params=params)
+            __describe(r)
+            payload = r.json()
 
             # track the list of pages per provider
             records[provider] = [payload]
@@ -83,8 +91,10 @@ class ProviderClient(OAuthClientCredentialsAuth):
             # get subsequent pages of data
             next_url = __next_url(payload)
             while paging and next_url is not None:
-                payload = session.get(next_url)
-                records[provider].extend(payload)
+                r = session.get(next_url)
+                __describe(r)
+                payload = r.json()
+                records[provider].append(payload)
                 next_url = __next_url(payload)
 
         return records
@@ -95,13 +105,14 @@ class ProviderClient(OAuthClientCredentialsAuth):
         """
         return int(dt.timestamp()) if isinstance(dt, datetime) else int(dt)
 
-    def get_status_changes(self,
-                           providers=None,
-                           start_time=None,
-                           end_time=None,
-                           bbox=None,
-                           paging=True,
-                           **kwargs):
+    def get_status_changes(
+        self,
+        providers=None,
+        start_time=None,
+        end_time=None,
+        bbox=None,
+        paging=True,
+        **kwargs):
         """
         Request Status Changes data. Returns a map of provider => list of result(s)
 
@@ -137,22 +148,26 @@ class ProviderClient(OAuthClientCredentialsAuth):
             end_time = self._date_format(end_time)
 
         # gather all the params together
-        params = { **dict(start_time=start_time, end_time=end_time, bbox=bbox), **kwargs }
+        params = {
+            **dict(start_time=start_time, end_time=end_time, bbox=bbox),
+            **kwargs
+        }
 
         # make the request(s)
         status_changes = self._request(providers, mds.STATUS_CHANGES, params, paging)
 
         return status_changes
 
-    def get_trips(self,
-                  providers=None,
-                  device_id=None,
-                  vehicle_id=None,
-                  start_time=None,
-                  end_time=None,
-                  bbox=None,
-                  paging=True,
-                  **kwargs):
+    def get_trips(
+        self,
+        providers=None,
+        device_id=None,
+        vehicle_id=None,
+        start_time=None,
+        end_time=None,
+        bbox=None,
+        paging=True,
+        **kwargs):
         """
         Request Trips data. Returns a map of provider => list of result(s).
 
@@ -193,11 +208,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
         # gather all the params togethers
         params = { 
-            **dict(device_id=device_id,
-                   vehicle_id = vehicle_id,
-                   start_time=start_time,
-                   end_time=end_time,
-                   bbox=bbox),
+            **dict(device_id=device_id, vehicle_id=vehicle_id, start_time=start_time, end_time=end_time, bbox=bbox),
             **kwargs
         }
 
