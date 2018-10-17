@@ -54,7 +54,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
         """
         Internal helper for sending requests.
 
-        Returns a map of provider => payload(s).
+        Returns a dict of provider => payload(s).
         """
         def __next_url(payload):
             """
@@ -114,7 +114,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
         paging=True,
         **kwargs):
         """
-        Request Status Changes data. Returns a map of provider => list of result(s)
+        Request Status Changes data. Returns a dict of provider => list of status_changes payload(s)
 
         Supported keyword args:
 
@@ -169,7 +169,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
         paging=True,
         **kwargs):
         """
-        Request Trips data. Returns a map of provider => list of result(s).
+        Request Trips data. Returns a dict of provider => list of trips payload(s).
 
         Supported keyword args:
 
