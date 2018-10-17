@@ -109,7 +109,7 @@ class ProviderSchema():
         Get the list of valid propulsion type values for this schema.
         """
         definition = self.schema["definitions"]["vehicle_type"]
-        return definition["items"]["enum"]
+        return definition["enum"]
 
     def validate(self, instance_source):
         """
