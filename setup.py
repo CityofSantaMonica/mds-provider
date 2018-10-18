@@ -30,7 +30,7 @@ setup(
     install_requires=[
         "Fiona",
         "geopandas",
-        "jsonschema",
+        "jsonschema >= 3.0.0a2",
         "numpy",
         "pandas",
         "psycopg2-binary",
