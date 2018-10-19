@@ -8,7 +8,6 @@ from mds.db import sql
 from mds.json import read_data_file
 import os
 import pandas as pd
-import psycopg2
 import sqlalchemy
 
 
@@ -24,6 +23,7 @@ class ProviderDataLoader():
     """
     A class for loading MDS Provider data.
     """
+
     def __init__(self, user, password, db, host, port):
         self.engine = data_engine(user, password, db, host, port)
 
@@ -82,11 +82,12 @@ class ProviderDataLoader():
         """
         # read the data file
         _, df = read_data_file(src, record_type)
-        self.load_from_df(df, record_type, table, before_load=before_load, stage_first=stage_first)
+        self.load_from_df(df, record_type, table,
+                          before_load=before_load, stage_first=stage_first)
 
     def load_from_records(self, records, record_type, table, before_load=None, stage_first=True):
         """
-        Load the array of :records: of type :record_type: into the table :table: using the connection defined by :engine:.
+        Load the array of :records: of :record_type: into the table :table: using the connection defined by :engine:.
 
         :before_load: is an optional callback to pre-process a DataFrame before loading
         it into :table:.
@@ -94,7 +95,8 @@ class ProviderDataLoader():
         if isinstance(records, list):
             if len(records) > 0:
                 df = pd.DataFrame.from_records(records)
-                self.load_from_df(df, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_df(
+                    df, record_type, table, before_load=before_load, stage_first=stage_first)
             else:
                 print("No records to load")
 
@@ -128,68 +130,34 @@ class ProviderDataLoader():
         # source is a single data page
         if isinstance(source, dict) and "data" in source and record_type in source["data"]:
             records = source["data"][record_type]
-            self.load_from_records(records, record_type, table, before_load=before_load, stage_first=stage_first)
+            self.load_from_records(
+                records, record_type, table, before_load=before_load, stage_first=stage_first)
 
         # source is a list of data pages
         elif isinstance(source, list) and all([isinstance(s, dict) and "data" in s for s in source]):
             for page in source:
-                self.load_from_source(page, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_source(
+                    page, record_type, table, before_load=before_load, stage_first=stage_first)
 
         # source is a dict of Provider => list of data pages
         elif isinstance(source, dict) and all(isinstance(k, mds.providers.Provider) for k in source.keys()):
             for _, pages in source.items():
-                self.load_from_source(pages, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_source(
+                    pages, record_type, table, before_load=before_load, stage_first=stage_first)
 
         # source is a list of file paths
         elif any([isinstance(s, str) and os.path.exists(s) for s in source]):
             for path in source:
-                self.load_from_file(path, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_file(
+                    path, record_type, table, before_load=before_load, stage_first=stage_first)
 
         # source is a single file path
         elif isinstance(source, str) and os.path.exists(source):
-            self.load_from_file(source, record_type, table, before_load=before_load, stage_first=stage_first)
+            self.load_from_file(source, record_type, table,
+                                before_load=before_load, stage_first=stage_first)
 
         else:
             print(f"Couldn't recognize source type: {type(source)}. Skipping.")
-
-
-        def load_status_changes(self, sources, table=mds.STATUS_CHANGES, stage_first=True):
-            """
-            Load status_changes data from :sources: into :table:.
-
-            By default, stages the load into a temp table before upserting to the final destination.
-            """
-            def before_load(df):
-                self._json_cols_tostring(df, ["event_location"])
-                return self._add_missing_cols(df, ["battery_pct", "associated_trips"])
-
-            load_from_source(
-                sources,
-                mds.STATUS_CHANGES,
-                self.engine,
-                table,
-                before_load=before_load,
-                stage_first=stage_first
-            )
-
-        def load_trips(self, sources, table=mds.TRIPS, stage_first=True):
-            """
-            Load trips data from :sources: into :table:.
-
-            By default, stages the load into a temp table before upserting to the final destination.
-            """
-            def before_load(df):
-                self._json_cols_tostring(df, ["route"])
-                return self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
-
-            load_from_source(
-                sources,
-                mds.TRIPS,
-                self.engine,
-                table,
-                before_load=before_load,
-                stage_first=stage_first
-            )
 
     def load_status_changes(self, sources, table=mds.STATUS_CHANGES, stage_first=True):
         """
@@ -201,7 +169,8 @@ class ProviderDataLoader():
             self._json_cols_tostring(df, ["event_location"])
             return self._add_missing_cols(df, ["battery_pct", "associated_trips"])
 
-        self.load_from_source(sources, mds.STATUS_CHANGES, table, before_load=before_load, stage_first=stage_first)
+        self.load_from_source(sources, mds.STATUS_CHANGES, table,
+                              before_load=before_load, stage_first=stage_first)
 
     def load_trips(self, sources, table=mds.TRIPS, stage_first=True):
         """
@@ -213,5 +182,5 @@ class ProviderDataLoader():
             self._json_cols_tostring(df, ["route"])
             return self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
 
-        self.load_from_source(sources, mds.TRIPS, table, before_load=before_load, stage_first=stage_first)
-
+        self.load_from_source(sources, mds.TRIPS, table,
+                              before_load=before_load, stage_first=stage_first)
