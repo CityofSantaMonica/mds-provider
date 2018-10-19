@@ -4,8 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+requests = "*"
 
 [dev-packages]
-sphinx
+sphinx = "*"
+recommonmark = "*"
+
 [requires]
 python_version = "3.6"
