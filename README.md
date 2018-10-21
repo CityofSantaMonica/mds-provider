@@ -1,12 +1,10 @@
-# mds-provider
+# mds-provider [![Documentation Status][docs-status]][docs]
 
 Tools for working with [MDS `provider`][provider] data.
 
-Developed and tested with Python 3.7+.
+Developed and tested with Python 3.6.
 
 See [`mds-provider-services`](https://github.com/CityofSantaMonica/mds-provider-services) for real-world usage of many of these tools.
-
-|docs| [Documentation](https://mds-provider.readthedocs.io/en/init-docs/).
 
 ## Installation
 
