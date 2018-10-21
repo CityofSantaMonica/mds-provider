@@ -29,10 +29,18 @@ class ProviderSchema():
                 f"Invalid schema_type '{schema_type}'. Valid schema_types: {valid_types}")
 
         # acquire the schema
-        schema_url = self.SCHEMA_ROOT.format(
-            ref or self.DEFAULT_REF, schema_type)
-        self.schema = requests.get(schema_url).json()
         self.schema_type = schema_type
+        self.ref = ref or self.DEFAULT_REF
+        self.schema_url = self.url(schema_type, self.ref)
+
+        try:
+            self.schema = requests.get(self.schema_url).json()
+        except:
+            raise ValueError(f"Invalid schema url: {self.schema_url}")
+
+        # override the $id for a non-standard ref
+        if self.ref is not self.DEFAULT_REF:
+            self.schema["$id"] = self.schema_url
 
     def event_types(self):
         """
@@ -118,3 +126,11 @@ class ProviderSchema():
         Acquires the Trips schema.
         """
         return ProviderSchema(mds.TRIPS, ref=ref)
+
+    @classmethod
+    def url(cls, schema_type, ref=None):
+        """
+        Helper to return a formatted schema URL given the :schema_type: and optional :ref:.
+        """
+        ref = ref or cls.DEFAULT_REF
+        return cls.SCHEMA_ROOT.format(ref, schema_type)
