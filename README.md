@@ -6,6 +6,8 @@ Developed and tested with Python 3.7+.
 
 See [`mds-provider-services`](https://github.com/CityofSantaMonica/mds-provider-services) for real-world usage of many of these tools.
 
+|docs| [Documentation](https://mds-provider.readthedocs.io/en/init-docs/).
+
 ## Installation
 
 Install with `pip`:
