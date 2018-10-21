@@ -1,10 +1,12 @@
- The [`mds.schema.validation`](https://github.com/CityofSantaMonica/mds-provider/blob/master/mds/schema/validation.py) module supports validating MDS Provider data against the published [MDS JSON Schema](https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/generate_schema) documents.
+# Schema Validation
 
-This module exports the `ProviderDataValidator` class, which works hand-in-hand with the [[ProviderSchema|Schemas: Introspection]] class.
+The `mds.schema.validation` module supports validating MDS Provider data against the published [MDS JSON Schema][schema] documents.
 
-## Example Usage
+This module exports the `ProviderDataValidator` class, which works hand-in-hand with the `ProviderSchema` class.
 
-The easiest way is to create an instance of a validator for a schema type and (git) reference, and then run validation against some input data:
+## Examples
+
+Create an instance of a validator for a schema type and (git) reference, and then run validation against some input data:
 
 ```python
 from mds.schema.validation import ProviderDataValidator
@@ -16,7 +18,7 @@ for error in validator.validate(data):
     print(error)
 ```
 
-Outputs a `Page error`:
+Outputs a `Page error`, indicating a problem with the top-level data structure (the page of data):
 
 ```console
 Page error
@@ -25,8 +27,6 @@ Page error
 Page error
 'data' is a required property
 ```
-
-Indicating a problem with the top-level data structure (the page of data).
 
 With slightly more complex data:
 
@@ -107,7 +107,6 @@ A shortcut for the above is to simply call `validate()` on the `ProviderSchema` 
 
 ```python
 from mds.schema import ProviderSchema
-from mds.schema.validation import ProviderDataValidator
 
 schema = ProviderSchema.StatusChanges(ref="dev")
 data = {}
@@ -115,3 +114,5 @@ data = {}
 for error in schema.validate(data):
     print(error)
 ```
+
+[schema]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/generate_schema

@@ -1,19 +1,13 @@
-.. mds-provider documentation master file, created by
-   sphinx-quickstart on Thu Oct 18 20:28:00 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to mds-provider's documentation!
+mds-provider
 ========================================
 
+Python tools for working with `Mobility Data Specification: Provider <https://github.com/CityofLosAngeles/mobility-data-specification/tree/master/provider>`_
+data.
+
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :maxdepth: 2
 
-
-
-Indices and tables
-==================
+    examples/index
 
 * :ref:`genindex`
 * :ref:`modindex`

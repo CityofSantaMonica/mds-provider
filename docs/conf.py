@@ -12,9 +12,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(1, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -23,10 +23,11 @@ project = 'mds-provider'
 copyright = '2018, City of Santa Monica'
 author = 'City of Santa Monica'
 
+import mds
 # The short X.Y version
-version = ''
+version = mds.VERSION()
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = mds.VERSION()
 
 
 # -- General configuration ---------------------------------------------------
@@ -52,11 +53,14 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+source_parsers = {
+   '.md': 'recommonmark.parser.CommonMarkParser',
+}
+
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 source_suffix = ['.rst', '.md']
-#source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'index'
@@ -71,7 +75,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'Makefile', 'conf.py']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -93,7 +97,7 @@ html_theme = 'alabaster'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -109,7 +113,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'mds-providerdoc'
+htmlhelp_basename = 'mds-provider-doc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -158,7 +162,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'mds-provider', 'mds-provider Documentation',
-     author, 'mds-provider', 'One line description of project.',
+     author, 'mds-provider', 'Python tools for working with Mobility Data Specification: Provider data.',
      'Miscellaneous'),
 ]
 
