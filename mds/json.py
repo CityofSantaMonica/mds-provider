@@ -101,29 +101,33 @@ def read_data_file(src, record_type):
 class CustomJsonEncoder(json.JSONEncoder):
     """
     Provides json encoding for some special types:
-        - datetime -> date_format or string
-        - Point/Polygon -> GeoJSON Feature
-        - tuple -> list
-        - UUID -> str
+
+        - datetime to date_format or str
+        - Point/Polygon to GeoJSON Feature
+        - tuple to list
+        - UUID to str
     """
 
     def __init__(self, *args, **kwargs):
         """
-        Initialize a `CustomJsonEncoder` with an optional :date_format:
-           - `unix` to format dates as Unix timestamps
-           - `iso8601` to format dates as ISO 8601 strings
-           - `<python format string>` for custom formats
+        Initialize a new `CustomJsonEncoder`.
+
+        Optional keyword arguments:
+
+        :date_format: Configure how dates are formatted using one of:
+
+            - unix: format dates as integer milliseconds since Unix epoch (MDS default)
+            - iso8601: format dates as ISO 8601 strings
+            - python format string: custom format
         """
-        if "date_format" in kwargs:
-            self.date_format = kwargs["date_format"]
-            del kwargs["date_format"]
+        self.date_format = kwargs.pop("date_format", "unix")
 
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
     def default(self, obj):
         if isinstance(obj, datetime):
             if self.date_format == "unix":
-                return obj.timestamp()
+                return int(round(obj.timestamp() * 1000))
             elif self.date_format == "iso8601":
                 return obj.isoformat()
             elif self.date_format is not None:

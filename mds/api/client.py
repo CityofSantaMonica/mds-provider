@@ -6,7 +6,9 @@ from datetime import datetime
 import json
 import mds
 import time
+
 from mds.api.auth import auth_types
+from mds.json import CustomJsonEncoder
 from mds.providers import get_registry, Provider
 
 
@@ -26,6 +28,7 @@ class ProviderClient():
             - git tag
         """
         self.providers = providers if providers is not None else get_registry(ref)
+        self.encoder = CustomJsonEncoder()
 
     def _auth_session(self, provider):
         """
@@ -137,7 +140,7 @@ class ProviderClient():
         """
         Internal helper to format datetimes for querystrings.
         """
-        return int(dt.timestamp()) if isinstance(dt, datetime) else int(dt)
+        return self.encoder.encode(dt) if isinstance(dt, datetime) else int(dt)
 
     def get_status_changes(
         self,
