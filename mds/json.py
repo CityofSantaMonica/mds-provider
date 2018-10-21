@@ -8,6 +8,7 @@ import geopandas
 import json
 import os
 import pandas as pd
+from pathlib import Path
 import requests
 import shapely.geometry
 from shapely.geometry import Point, Polygon
@@ -79,10 +80,13 @@ def read_data_file(src, record_type):
         - the version string
         - a DataFrame of the record collection
     """
-    with open(src, "r") as f:
-        payload = json.load(f)
-        data = payload["data"][record_type]
-        return payload["version"], pd.DataFrame.from_records(data)
+    if isinstance(src, Path):
+        payload = json.load(src.open("r"))
+    else:
+        payload = json.load(open(src, "r"))
+
+    data = payload["data"][record_type]
+    return payload["version"], pd.DataFrame.from_records(data)
 
 
 class CustomJsonEncoder(json.JSONEncoder):
