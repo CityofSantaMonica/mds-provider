@@ -54,7 +54,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_c
         cast(propulsion_type as propulsion_types[]),
         cast(event_type as event_types),
         cast(event_type_reason as event_type_reasons),
-        to_timestamp(event_time) at time zone 'UTC',
+        to_timestamp(cast(event_time as double precision) / 1000) at time zone 'UTC',
         cast(event_location as jsonb),
         battery_pct,
         cast(associated_trip as uuid)
@@ -101,8 +101,8 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=Non
         trip_distance,
         cast(route as jsonb),
         accuracy,
-        to_timestamp(start_time) at time zone 'UTC',
-        to_timestamp(end_time) at time zone 'UTC',
+        to_timestamp(cast(start_time as double precision) / 1000) at time zone 'UTC',
+        to_timestamp(cast(end_time as double precision) / 1000) at time zone 'UTC',
         parking_verification_url,
         standard_cost,
         actual_cost

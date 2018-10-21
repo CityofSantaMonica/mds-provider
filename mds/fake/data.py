@@ -32,7 +32,5 @@ def random_string(k, chars=None):
     return "".join(random.choices(chars, k=k))
 
 def random_file_url(company):
-    return "https://{}.co/{}.jpg".format(
-        "-".join(company.split()), random_string(7)
-    ).lower()
-
+    url = "-".join(company.split())
+    return f"https://{url}.co/{random_string(7)}.jpg".lower()
