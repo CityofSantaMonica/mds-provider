@@ -18,14 +18,21 @@ class Provider():
     def __init__(self, provider_name, provider_id, url, mds_api_url, **kwargs):
         self.provider_name = provider_name
         self.provider_id = provider_id if isinstance(provider_id, UUID) else UUID(provider_id)
-        self.url = url
-        self.mds_api_url = mds_api_url
+        self.url = self._clean_url(url)
+        self.mds_api_url = self._clean_url(mds_api_url)
 
         for k,v in kwargs.items():
             setattr(self, k, v)
 
     def __repr__(self):
         return f"<Provider name:'{self.provider_name}' api_url:'{self.mds_api_url}' id:'{str(self.provider_id)}'>"
+
+    def _clean_url(self, url):
+        """
+        Helper to return a normalized URL
+        """
+        url = url.lower().rstrip("/")
+        return url if url.startswith("https://") else f"https://{url}"
 
     def configure(self, config, use_id=False):
         """
@@ -64,9 +71,8 @@ def get_registry(ref=DEFAULT_REF):
     url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
 
     with requests.get(url, stream=True) as r:
-        lines = (line.decode("utf-8") for line in r.iter_lines())
+        lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
         for record in csv.DictReader(lines):
             providers.append(Provider(**record))
 
     return providers
-
