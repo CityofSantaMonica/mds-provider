@@ -62,11 +62,14 @@ class ProviderClient(OAuthClientCredentialsAuth):
             """
             return payload["links"].get("next") if "links" in payload else None
 
-        def __describe(req):
-            print(f"Requested {req.url}, Response Code: {req.status_code}")
+        def __describe(res):
+            print(f"Requested {res.url}, Response Code: {res.status_code}")
             print("Response Headers:")
-            for k,v in req.headers.items():
+            for k,v in res.headers.items():
                 print(f"{k}: {v}")
+
+            if r.status_code is not 200:
+                print(r.text)
 
         # create a request url for each provider
         urls = [self._build_url(p, endpoint) for p in providers]
@@ -83,6 +86,10 @@ class ProviderClient(OAuthClientCredentialsAuth):
             # get the initial page of data
             r = session.get(url, params=params)
             __describe(r)
+
+            if r.status_code is not 200:
+                continue
+
             payload = r.json()
 
             # track the list of pages per provider
@@ -93,6 +100,10 @@ class ProviderClient(OAuthClientCredentialsAuth):
             while paging and next_url is not None:
                 r = session.get(next_url)
                 __describe(r)
+
+                if r.status_code is not 200:
+                    break
+
                 payload = r.json()
                 records[provider].append(payload)
                 next_url = __next_url(payload)
