@@ -159,28 +159,36 @@ class ProviderDataLoader():
         else:
             print(f"Couldn't recognize source type: {type(source)}. Skipping.")
 
-    def load_status_changes(self, sources, table=mds.STATUS_CHANGES, stage_first=True):
+    def load_status_changes(self, sources, table=mds.STATUS_CHANGES, before_load=None, stage_first=True):
         """
         Load status_changes data from :sources: using the connection defined by :engine:.
 
         By default, stages the load into a temp table before upserting to the final destination.
         """
-        def before_load(df):
+        def __before_load(df):
+            """
+            Helper converts JSON cols and ensures optional cols exist
+            """
             self._json_cols_tostring(df, ["event_location"])
-            return self._add_missing_cols(df, ["battery_pct", "associated_trips"])
+            df = self._add_missing_cols(df, ["battery_pct", "associated_trips"])
+            return before_load(df) if before_load else df
 
         self.load_from_source(sources, mds.STATUS_CHANGES, table,
-                              before_load=before_load, stage_first=stage_first)
+                              before_load=__before_load, stage_first=stage_first)
 
-    def load_trips(self, sources, table=mds.TRIPS, stage_first=True):
+    def load_trips(self, sources, table=mds.TRIPS, before_load=None, stage_first=True):
         """
         Load trips data from :sources: using the connection defined by :engine:.
 
         By default, stages the load into a temp table before upserting to the final destination.
         """
-        def before_load(df):
+        def __before_load(df):
+            """
+            Helper converts JSON cols and ensures optional cols exist
+            """
             self._json_cols_tostring(df, ["route"])
-            return self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
+            df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
+            return before_load(df) if before_load else df
 
         self.load_from_source(sources, mds.TRIPS, table,
-                              before_load=before_load, stage_first=stage_first)
+                              before_load=__before_load, stage_first=stage_first)
