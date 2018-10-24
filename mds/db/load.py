@@ -171,6 +171,8 @@ class ProviderDataLoader():
             """
             self._json_cols_tostring(df, ["event_location"])
             df = self._add_missing_cols(df, ["battery_pct", "associated_trips"])
+            df[["associated_trips"]] = df[["associated_trips"]].astype("object")
+            df["associated_trips"] = df["associated_trips"].apply(lambda d: d if isinstance(d, list) else [])
             return before_load(df) if before_load else df
 
         self.load_from_source(sources, mds.STATUS_CHANGES, table,
