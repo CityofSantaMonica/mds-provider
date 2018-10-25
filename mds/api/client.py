@@ -56,13 +56,10 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
         Returns a dict of provider => payload(s).
         """
-        def __next_url(payload):
-            """
-            Helper to get the next URL or None
-            """
-            return payload["links"].get("next") if "links" in payload else None
-
         def __describe(res):
+            """
+            Prints details about the given response.
+            """
             print(f"Requested {res.url}, Response Code: {res.status_code}")
             print("Response Headers:")
             for k,v in res.headers.items():
@@ -71,11 +68,26 @@ class ProviderClient(OAuthClientCredentialsAuth):
             if r.status_code is not 200:
                 print(r.text)
 
+        def __has_data(page):
+            """
+            Checks if this :page: has a "data" property with a non-empty payload
+            """
+            data = page["data"] if "data" in page else {"__payload__": []}
+            payload = data[endpoint] if endpoint in data else []
+            print(f"Got payload with {len(payload)} {endpoint}")
+            return len(payload) > 0
+
+        def __next_url(page):
+            """
+            Gets the next URL or None from :page:
+            """
+            return page["links"].get("next") if "links" in page else None
+
         # create a request url for each provider
         urls = [self._build_url(p, endpoint) for p in providers]
 
         # keyed by provider
-        records = {}
+        results = {}
 
         for i in range(len(providers)):
             provider, url = providers[i], urls[i]
@@ -85,30 +97,34 @@ class ProviderClient(OAuthClientCredentialsAuth):
 
             # get the initial page of data
             r = session.get(url, params=params)
-            __describe(r)
 
             if r.status_code is not 200:
+                __describe(r)
                 continue
 
-            payload = r.json()
+            this_page = r.json()
 
             # track the list of pages per provider
-            records[provider] = [payload]
+            results[provider] = [this_page]
 
             # get subsequent pages of data
-            next_url = __next_url(payload)
-            while paging and next_url is not None:
+            next_url = __next_url(this_page)
+            while paging and next_url:
                 r = session.get(next_url)
-                __describe(r)
 
                 if r.status_code is not 200:
+                    __describe(r)
                     break
 
-                payload = r.json()
-                records[provider].append(payload)
-                next_url = __next_url(payload)
+                this_page = r.json()
 
-        return records
+                if __has_data(this_page):
+                    results[provider].append(this_page)
+                    next_url = __next_url(this_page)
+                else:
+                    break
+
+        return results
 
     def _date_format(self, dt):
         """
@@ -227,4 +243,3 @@ class ProviderClient(OAuthClientCredentialsAuth):
         trips = self._request(providers, mds.TRIPS, params, paging)
 
         return trips
-
