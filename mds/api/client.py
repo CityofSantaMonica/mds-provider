@@ -105,7 +105,7 @@ class ProviderClient(OAuthClientCredentialsAuth):
             this_page = r.json()
 
             # track the list of pages per provider
-            results[provider] = [this_page]
+            results[provider] = [this_page] if __has_data(this_page) else []
 
             # get subsequent pages of data
             next_url = __next_url(this_page)
