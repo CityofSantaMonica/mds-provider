@@ -10,6 +10,7 @@ sphinx = "*"
 recommonmark = "*"
 requests = "*"
 sphinx-rtd-theme = "*"
+mds-provider = {path = "."}
 
 [requires]
 python_version = "3.6"

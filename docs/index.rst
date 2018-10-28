@@ -8,6 +8,7 @@ data.
     :maxdepth: 2
 
     examples/index
+    reference/index
 
 * :ref:`genindex`
 * :ref:`modindex`
