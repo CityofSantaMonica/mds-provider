@@ -5,6 +5,7 @@ Load MDS Provider data into a database.
 import json
 import mds
 from mds.db import sql
+from mds.fake.data import random_string
 from mds.json import read_data_file
 import os
 import pandas as pd
@@ -60,7 +61,8 @@ class ProviderDataLoader():
             df.to_sql(table, self.engine, if_exists="append", index=False)
         else:
             # insert this DataFrame into a fresh temp table
-            temp = f"{table}_tmp"
+            factor = stage_first if isinstance(stage_first, int) else 1
+            temp = f"{table}_tmp_{random_string(factor)}"
             df.to_sql(temp, self.engine, if_exists="replace", index=False)
 
             # now insert from the temp table to the actual table
