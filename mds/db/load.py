@@ -9,6 +9,7 @@ from mds.fake.data import random_string
 from mds.json import read_data_file
 import os
 import pandas as pd
+from pathlib import Path
 import sqlalchemy
 
 
@@ -129,6 +130,13 @@ class ProviderDataLoader():
 
         - a dict of { Provider : [data page] }
         """
+        def __valid_path(p):
+            """
+            Check for a valid path reference
+            """
+            return (isinstance(p, str) and os.path.exists(p))
+            or (isinstance(p, Path) and p.exists())
+
         # source is a single data page
         if isinstance(source, dict) and "data" in source and record_type in source["data"]:
             records = source["data"][record_type]
@@ -148,18 +156,19 @@ class ProviderDataLoader():
                     pages, record_type, table, before_load=before_load, stage_first=stage_first)
 
         # source is a list of file paths
-        elif any([isinstance(s, str) and os.path.exists(s) for s in source]):
-            for path in source:
-                self.load_from_file(
+        elif isinstance(source, list) and any([__valid_path(p) for p in source]):
+            # load only the valid paths
+            for path in [p for p in source if __valid_path(p)]:
+                self.load_from_source(
                     path, record_type, table, before_load=before_load, stage_first=stage_first)
 
-        # source is a single file path
-        elif isinstance(source, str) and os.path.exists(source):
-            self.load_from_file(source, record_type, table,
-                                before_load=before_load, stage_first=stage_first)
+        # source is a single (valid) file path
+        elif __valid_path(source):
+            self.load_from_file(
+                source, record_type, table, before_load=before_load, stage_first=stage_first)
 
         else:
-            print(f"Couldn't recognize source type: {type(source)}. Skipping.")
+            print(f"Couldn't recognize source with type '{type(source)}'. Skipping.")
 
     def load_status_changes(self, sources, table=mds.STATUS_CHANGES, before_load=None, stage_first=True):
         """
