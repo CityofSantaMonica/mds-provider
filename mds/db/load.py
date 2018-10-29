@@ -134,8 +134,7 @@ class ProviderDataLoader():
             """
             Check for a valid path reference
             """
-            return (isinstance(p, str) and os.path.exists(p))
-            or (isinstance(p, Path) and p.exists())
+            return (isinstance(p, str) and os.path.exists(p)) or (isinstance(p, Path) and p.exists())
 
         # source is a single data page
         if isinstance(source, dict) and "data" in source and record_type in source["data"]:
