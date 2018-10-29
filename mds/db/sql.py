@@ -11,7 +11,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES):
     ignores records that conflict based on existing uniqueness constraints.
     """
     return f"""
-    INSERT INTO {dest_table}
+    INSERT INTO "{dest_table}"
     (
         provider_id,
         provider_name,
@@ -39,7 +39,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES):
         event_location::JSON,
         battery_pct,
         associated_trips::UUID[]
-    FROM {source_table}
+    FROM "{source_table}"
     ON CONFLICT DO NOTHING;
     """
 
@@ -49,7 +49,7 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS):
     ignores records that conflict based on existing uniqueness constraints.
     """
     return f"""
-    INSERT INTO {dest_table}
+    INSERT INTO "{dest_table}"
     (
         provider_id,
         provider_name,
@@ -85,7 +85,7 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS):
         parking_verification_url,
         standard_cost,
         actual_cost
-    FROM {source_table}
+    FROM "{source_table}"
     ON CONFLICT DO NOTHING;
     """
 
