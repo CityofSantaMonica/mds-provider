@@ -1,3 +1,2 @@
-__version__ = "0.2.0"
-__releasedate__ = "20181001"
-
+__version__ = "0.1.0"
+__mds_version__ = "0.2.0"
