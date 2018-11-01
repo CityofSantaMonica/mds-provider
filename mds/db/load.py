@@ -13,12 +13,25 @@ from pathlib import Path
 import sqlalchemy
 
 
-def data_engine(user, password, db, host, port):
+def data_engine(uri=None, **kwargs):
     """
-    Create a SQLAlchemy engine using the provided connection information.
+    Create a SQLAlchemy engine using the provided DBAPI-compatible connection uri.
+    E.g. `postgresql://user:password@host:port/db` for a PostgreSQL backend.
+
+    Also supports connecting via keyword arguments [:backend:], :user:, :password:, :host:, :port:, :db:.
+
+    If no :backend: is given, the default is `postgresql`.
+
+    :returns: An `sqlalchemy.engine.Engine` instance.
     """
-    url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
-    return sqlalchemy.create_engine(url)
+    if uri is None and all(k in kwargs for k in ["user", "password", "host", "port", "db"]):
+        backend = kwargs["backend"] if "backend" in kwargs else "postgresql"
+        user, password, host, port, db = kwargs["user"], kwargs["password"], kwargs["host"], kwargs["port"], kwargs["db"]
+        uri = f"{backend}://{user}:{password}@{host}:{port}/{db}"
+    else:
+        raise KeyError()
+
+    return sqlalchemy.create_engine(uri)
 
 
 class ProviderDataLoader():
@@ -26,8 +39,21 @@ class ProviderDataLoader():
     A class for loading MDS Provider data.
     """
 
-    def __init__(self, user, password, db, host, port):
-        self.engine = data_engine(user, password, db, host, port)
+    def __init__(self, uri=None, **kwargs):
+        """
+        Initialize a new `ProviderDataLoader` using a number of connection methods.
+
+        The default positional argument :uri:, a DBAPI-compatible connection URI
+        E.g. `postgresql://user:password@host:port/db` for a PostgreSQL backend.
+
+        Provide an `sqlalchemy.engine.Engine` instance via the :engine: keyword argument.
+
+        Or use the raw connection values :backend:, :user:, :password:, :host:, :port:, :db:.
+        """
+        if "engine" in kwargs:
+            self.engine = kwargs["engine"]
+        else:
+            self.engine = data_engine(uri=uri, **kwargs)
 
     def _json_cols_tostring(self, df, cols):
         """
