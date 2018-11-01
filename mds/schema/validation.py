@@ -8,6 +8,7 @@ import mds
 from mds.json import extract_point
 from mds.schema import ProviderSchema
 import os
+from pathlib import Path
 import requests
 import urllib
 
@@ -200,11 +201,12 @@ class ProviderDataValidator():
                 instance = requests.get(instance_source).json()
             else:
                 instance = json.loads(instance_source)
+        elif isinstance(instance_source, Path):
+            instance = json.load(instance_source.open("r"))
         elif isinstance(instance_source, dict):
             instance = instance_source
         else:
-            raise TypeError(
-                "Unrecognized :instance_source: format. Recognized formats: file path/URL, JSON string, dict")
+            raise TypeError("Unrecognized :instance_source: format. Recognized formats: file path/URL, JSON string, dict")
 
         schema = self._get_schema_instance(provider_schema, schema_type, ref)
         if schema is None:
