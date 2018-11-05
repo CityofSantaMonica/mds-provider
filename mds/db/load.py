@@ -66,7 +66,7 @@ class ProviderDataLoader():
         """
         For each :cols: not in the :df:, add it as an empty col.
         """
-        new_cols = df.columns.tolist() + cols
+        new_cols = set(df.columns.tolist() + cols)
         return df.reindex(columns=new_cols)
 
     def load_from_df(self, df, record_type, table, before_load=None, stage_first=True):
