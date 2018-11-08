@@ -153,27 +153,27 @@ class ProviderClient():
 
         Supported keyword args:
 
-            - `providers`: One or more Providers to issue this request to.
-                           The default is to issue the request to all Providers.
+        :providers: One or more Providers to issue this request to.
+                    The default is to issue the request to all Providers.
 
-            - `start_time`: Filters for status changes where `event_time` occurs at or after the given time
-                            Should be a datetime object or numeric representation of UNIX seconds
+        :start_time: Filters for status changes where `event_time` occurs at or after the given time
+                     Should be a datetime object or numeric representation of UNIX seconds
 
-            - `end_time`: Filters for status changes where `event_time` occurs at or before the given time
-                          Should be a datetime object or numeric representation of UNIX seconds
+        :end_time: Filters for status changes where `event_time` occurs before the given time
+                   Should be a datetime object or numeric representation of UNIX seconds
 
-            - `bbox`: Filters for status changes where `event_location` is within defined bounding-box.
-                      The order is defined as: southwest longitude, southwest latitude, 
-                      northeast longitude, northeast latitude (separated by commas).
+        :bbox: Filters for status changes where `event_location` is within defined bounding-box.
+               The order is defined as: southwest longitude, southwest latitude, 
+               northeast longitude, northeast latitude (separated by commas).
 
-                      e.g.
+               e.g.
 
-                      bbox=-122.4183,37.7758,-122.4120,37.7858
+               bbox=-122.4183,37.7758,-122.4120,37.7858
 
-            - `paging`: True (default) to follow paging and request all available data.
-                        False to request only the first page.
+        :paging: True (default) to follow paging and request all available data.
+                 False to request only the first page.
 
-            - `rate_limit`: Number of seconds of delay to insert between paging requests.
+        :rate_limit: Number of seconds of delay to insert between paging requests.
         """
         if providers is None:
             providers = self.providers
@@ -200,8 +200,8 @@ class ProviderClient():
         providers=None,
         device_id=None,
         vehicle_id=None,
-        start_time=None,
-        end_time=None,
+        min_end_time=None,
+        max_end_time=None,
         bbox=None,
         paging=True,
         rate_limit=0,
@@ -211,44 +211,53 @@ class ProviderClient():
 
         Supported keyword args:
 
-            - `providers`: One or more Providers to issue this request to.
-                           The default is to issue the request to all Providers.
+        :providers: One or more Providers to issue this request to.
+                    The default is to issue the request to all Providers.
 
-            - `device_id`: Filters for trips taken by the given device.
+        :device_id: Filters for trips taken by the given device.
 
-            - `vehicle_id`: Filters for trips taken by the given vehicle.
+        :vehicle_id: Filters for trips taken by the given vehicle.
 
-            - `start_time`: Filters for trips where `start_time` occurs at or after the given time
-                            Should be a datetime object or numeric representation of UNIX seconds
+        :min_end_time: Filters for trips where `end_time` occurs at or after the given time.
+                       Should be a datetime object or numeric representation of UNIX seconds
 
-            - `end_time`: Filters for trips where `end_time` occurs at or before the given time
-                          Should be a datetime object or numeric representation of UNIX seconds
+        :max_end_time: Filters for trips where `end_time` occurs before the given time.
+                       Should be a datetime object or numeric representation of UNIX seconds
 
-            - `bbox`: Filters for trips where and point within `route` is within defined bounding-box.
-                      The order is defined as: southwest longitude, southwest latitude, 
-                      northeast longitude, northeast latitude (separated by commas).
+        :bbox: Filters for trips where and point within `route` is within defined bounding-box.
+               The order is defined as: southwest longitude, southwest latitude, 
+               northeast longitude, northeast latitude (separated by commas).
 
-                      e.g.
+               e.g.
 
-                      bbox=-122.4183,37.7758,-122.4120,37.7858
+               bbox=-122.4183,37.7758,-122.4120,37.7858
 
-            - `paging`: True (default) to follow paging and request all available data.
-                        False to request only the first page.
+        :paging: True (default) to follow paging and request all available data.
+                 False to request only the first page.
 
-            - `rate_limit`: Number of seconds of delay to insert between paging requests.
+        :rate_limit: Number of seconds of delay to insert between paging requests.
         """
         if providers is None:
             providers = self.providers
 
+        # compatibility with the pre-0.3.0 API
+        if "start_time" in kwargs and min_end_time is None:
+            min_end_time = kwargs["start_time"]
+            del kwargs["start_time"]
+
+        if "end_time" in kwargs and max_end_time is None:
+            max_end_time = kwargs["end_time"]
+            del kwargs["end_time"]
+
         # convert datetimes to querystring friendly format
-        if start_time is not None:
-            start_time = self._date_format(start_time)
-        if end_time is not None:
-            end_time = self._date_format(end_time)
+        if min_end_time is not None:
+            min_end_time = self._date_format(min_end_time)
+        if max_end_time is not None:
+            max_end_time = self._date_format(max_end_time)
 
         # gather all the params togethers
-        params = {
-            **dict(device_id=device_id, vehicle_id=vehicle_id, start_time=start_time, end_time=end_time, bbox=bbox),
+        params = { 
+            **dict(device_id=device_id, vehicle_id=vehicle_id, min_end_time=min_end_time, max_end_time=max_end_time, bbox=bbox),
             **kwargs
         }
 
