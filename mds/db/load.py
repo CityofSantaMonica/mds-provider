@@ -11,6 +11,7 @@ import os
 import pandas as pd
 from pathlib import Path
 import sqlalchemy
+import string
 
 
 def data_engine(uri=None, **kwargs):
@@ -89,7 +90,7 @@ class ProviderDataLoader():
         else:
             # insert this DataFrame into a fresh temp table
             factor = stage_first if isinstance(stage_first, int) else 1
-            temp = f"{table}_tmp_{random_string(factor)}"
+            temp = f"{table}_tmp_{random_string(factor, chars=string.ascii_lowercase)}"
             df.to_sql(temp, self.engine, if_exists="replace", index=False)
 
             # now insert from the temp table to the actual table
