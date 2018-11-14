@@ -29,8 +29,8 @@ def data_engine(uri=None, **kwargs):
         backend = kwargs["backend"] if "backend" in kwargs else "postgresql"
         user, password, host, port, db = kwargs["user"], kwargs["password"], kwargs["host"], kwargs["port"], kwargs["db"]
         uri = f"{backend}://{user}:{password}@{host}:{port}/{db}"
-    else:
-        raise KeyError()
+    elif uri is None:
+        raise KeyError("Provide either `uri` or `user`, `password`, `host`, `port`, and `db`.")
 
     return sqlalchemy.create_engine(uri)
 
