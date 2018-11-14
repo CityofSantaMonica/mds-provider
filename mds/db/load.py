@@ -102,9 +102,9 @@ class ProviderDataLoader():
                 if query is not None:
                     conn.execute(query)
 
-            # Delete the tmptable  since we did fake tmp tables
-            # and not using Postgres TEMPORARY 
-            conn.execute(f"DROP TABLE {temp}")
+                # Delete the tmptable  since we did fake tmp tables
+                # and not using Postgres TEMPORARY 
+                conn.execute(f"DROP TABLE {temp}")
 
 
     def load_from_file(self, src, record_type, table, before_load=None, stage_first=True):
