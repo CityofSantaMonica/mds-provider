@@ -2,16 +2,15 @@
 Work with MDS Provider data as (Geo)JSON files and objects.
 """
 
-import fiona
 from datetime import datetime
-import geopandas
+import fiona
 import json
 import os
-import pandas as pd
+import pandas
 from pathlib import Path
 import requests
 import shapely.geometry
-from shapely.geometry import Point, Polygon
+import shapely.ops
 from uuid import UUID
 
 
@@ -43,7 +42,7 @@ def extract_point(feature):
     Extract the coordinates from the given GeoJSON :feature: as a shapely.geometry.Point
     """
     coords = feature["geometry"]["coordinates"]
-    return Point(coords[0], coords[1])
+    return shapely.geometry.Point(coords[0], coords[1])
 
 def to_feature(shape, properties={}):
     """
@@ -51,24 +50,16 @@ def to_feature(shape, properties={}):
 
     Optionally give the Feature a :properties: dict.
     """
-    collection = to_feature_collection(shape)
-    feature = collection["features"][0]
+    feature = shapely.geometry.mapping(shape)
     feature["properties"] = properties
 
-    # remove some unnecessary and redundant data
-    if "id" in feature:
-        del feature["id"]
-    if isinstance(shape, Point) and "bbox" in feature:
-        del feature["bbox"]
+    if isinstance(shape, shapely.geometry.Point):
+        feature["coordinates"] = list(feature["coordinates"])
+    else:
+        # assume shape is polygon (multipolygon will break)
+        feature["coordinates"] = [list(list(coords) for coords in part) for part in feature["coordinates"]]
 
-    return dict(feature)
-
-def to_feature_collection(shape):
-    """
-    Create a GeoJSON FeatureCollection object for the given shapely.geometry :shape:.
-    """
-    collection = geopandas.GeoSeries([shape]).__geo_interface__
-    return dict(collection)
+    return feature
 
 def read_data_file(src, record_type):
     """
@@ -132,4 +123,3 @@ class CustomJsonEncoder(json.JSONEncoder):
             return str(obj)
 
         return json.JSONEncoder.default(self, obj)
-
