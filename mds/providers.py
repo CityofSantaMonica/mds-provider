@@ -56,23 +56,30 @@ class Provider():
         return Provider(**_kwargs)
 
 
-def get_registry(ref=DEFAULT_REF):
+def get_registry(ref=DEFAULT_REF, file=None):
     """
-    Download and parse the official Provider registry from GitHub.
+    Parse a Provider registry file; by default, download the official registry from GitHub `master`.
 
     Optionally download from the specified :ref:, which could be any of:
         - git branch name
         - commit hash (long or short)
         - git tag
 
-    By default, downloads from `master`.
+    Or use the :file: kwarg to skip the download and parse a local registry file.
     """
     providers = []
-    url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
 
-    with requests.get(url, stream=True) as r:
-        lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
+    def __parse(lines):
         for record in csv.DictReader(lines):
             providers.append(Provider(**record))
+
+    if file:
+        with open(file, "r") as f:
+            __parse(f.readlines())
+    else:
+        url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
+        with requests.get(url, stream=True) as r:
+            lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
+            __parse(line)
 
     return providers
