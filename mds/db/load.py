@@ -44,17 +44,50 @@ class ProviderDataLoader():
         """
         Initialize a new `ProviderDataLoader` using a number of connection methods.
 
-        The default positional argument :uri:, a DBAPI-compatible connection URI
+        Optional positional arguments:
+
+        :uri: A DBAPI-compatible connection URI
         E.g. `postgresql://user:password@host:port/db` for a PostgreSQL backend.
 
-        Provide an `sqlalchemy.engine.Engine` instance via the :engine: keyword argument.
+        Optional keyword arguments:
 
-        Or use the raw connection values :backend:, :user:, :password:, :host:, :port:, :db:.
+        :engine: An `sqlalchemy.engine.Engine` instance.
+
+        :backend: The name of a the SQL backend, e.g. `postgres`.
+
+        :user: The user account to connect with.
+
+        :password: The password for the user account.
+
+        :host: The SQL host.
+
+        :port: The SQL host port.
+
+        :db: The name of the database to connect to.
+
+        You must provide either:
+          - :uri:
+          - :engine:
+          - all of :user:, :password:, :host:, :port:, and :db:
+
+        :stage_first: True (default) to stage the load into a temp table before upserting to the final destination. False
+        to load directly into the target table. Given an int greater than 0, determines the degrees of randomness when
+        creating the temp table, e.g.
+
+        `stage_first=3`
+
+        stages to a random temp table with 26*26*26 possible naming choices.
+
+        :on_conflict_update: False (default) to ignore INSERT conflicts. True to perform an UDPATE using newer values.
+        Only applies when :stage_first: evaluates True.
         """
         if "engine" in kwargs:
             self.engine = kwargs["engine"]
         else:
             self.engine = data_engine(uri=uri, **kwargs)
+
+        self.stage_first = kwargs.get("stage_first", True)
+        self.on_conflict_update = kwargs.get("on_conflict_update", False)
 
     def _json_cols_tostring(self, df, cols):
         """
@@ -70,15 +103,38 @@ class ProviderDataLoader():
         new_cols = set(df.columns.tolist() + cols)
         return df.reindex(columns=new_cols)
 
-    def load_from_df(self, df, record_type, table, before_load=None, stage_first=True):
+    def load_from_df(self, df, record_type, table, **kwargs):
         """
-        Inserts data from a DataFrame matching the given MDS :record_type: schema to the :table:
-        using the connection specified in :enging:.
+        Inserts MDS data from a DataFrame.
 
-        :before_load: is an optional transform to perform on the DataFrame before inserting its data.
+        Required positional arguments:
 
-        :stage_first: when True, implements a staged upsert via a temp table. The default is True.
+        :df: The `pandas.DataFrame` of data of type :record_type: to insert.
+
+        :record_type: The type of MDS data - either `status_changes` or `trips`.
+
+        :table: The name of the database table to insert this data into.
+
+        Optional keyword arguments:
+
+        :before_load: Transform callback executed on the incoming :df:; should return the final `pandas.DataFrame` to be
+        loaded to the database.
+
+        :stage_first: True (default) to stage the load into a temp table before upserting to the final destination. False
+        to load directly into the target table. Given an int greater than 0, determines the degrees of randomness when
+        creating the temp table, e.g.
+
+        `stage_first=3`
+
+        stages to a random temp table with 26*26*26 possible naming choices.
+
+        :on_conflict_update: False (default) to ignore INSERT conflicts. True to perform an UDPATE using newer values.
+        Only applies when :stage_first: evaluates True.
         """
+        before_load = kwargs.get("before_load", None)
+        stage_first = kwargs.get("stage_first", self.stage_first)
+        on_conflict_update = kwargs.get("on_conflict_update", self.on_conflict_update)
+
         # run any pre-processors to transform the df
         if before_load is not None:
             new_df = before_load(df)
@@ -96,71 +152,89 @@ class ProviderDataLoader():
             # now insert from the temp table to the actual table
             with self.engine.begin() as conn:
                 if record_type == mds.STATUS_CHANGES:
-                    query = sql.insert_status_changes_from(temp, table)
+                    query = sql.insert_status_changes_from(temp, table, on_conflict_update)
                 elif record_type == mds.TRIPS:
-                    query = sql.insert_trips_from(temp, table)
+                    query = sql.insert_trips_from(temp, table, on_conflict_update)
                 if query is not None:
                     conn.execute(query)
 
-                # Delete the tmptable  since we did fake tmp tables
-                # and not using Postgres TEMPORARY 
+                # Delete temp table since not using a real TEMPORARY
                 conn.execute(f"DROP TABLE {temp}")
 
-
-    def load_from_file(self, src, record_type, table, before_load=None, stage_first=True):
+    def load_from_file(self, src, record_type, table, **kwargs):
         """
-        Load the data file of type :record_type: at :src: in the table :table: using the connection
-        defined by :engine:.
+        Load MDS data from a file source.
 
-        :before_load: is an optional callback to pre-process a DataFrame before loading
-        it into :table:.
+        Required positional arguments:
+
+        :src: Path to a JSON file of status_change or trip data. See `mds.json.read_data_file()` for
+        more details.
+
+        :record_type: One of `status_changes` or `trips`.
+
+        :table: The name of the table to load data to.
+
+        Additional keyword arguments are passed-through to `load_from_df`.
         """
         # read the data file
         _, df = read_data_file(src, record_type)
-        self.load_from_df(df, record_type, table,
-                          before_load=before_load, stage_first=stage_first)
+        self.load_from_df(df, record_type, table, **kwargs)
 
-    def load_from_records(self, records, record_type, table, before_load=None, stage_first=True):
+    def load_from_records(self, records, record_type, table, **kwargs):
         """
-        Load the array of :records: of :record_type: into the table :table: using the connection defined by :engine:.
+        Load a list of MDS records.
 
-        :before_load: is an optional callback to pre-process a DataFrame before loading
-        it into :table:.
+        Required positional arguments:
+
+        :records: A list of status_change or trip objects.
+
+        :record_type: One of `status_changes` or `trips`.
+
+        :table: The name of the table to load data to.
+
+        Additional keyword arguments are passed-through to `load_from_df`.
         """
         if isinstance(records, list):
             if len(records) > 0:
                 df = pd.DataFrame.from_records(records)
-                self.load_from_df(
-                    df, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_df(df, record_type, table, **kwargs)
             else:
                 print("No records to load")
 
-    def load_from_source(self, source, record_type, table, before_load=None, stage_first=True):
+    def load_from_source(self, source, record_type, table, **kwargs):
         """
-        Load from a variety of file path or object sources into a :table: using the connection defined by conn.
+        Load MDS data from a variety of file path or object sources.
 
-        :source: could be:
+        Required positional arguments:
 
-        - a list of json file paths
+        :source: The data source to load, which could be any of:
 
-        - a data page (the contents of a json file), e.g.
-            {
-                "version": "x.y.z",
-                "data": {
-                    "record_type": [{
-                        "trip_id": "1",
-                        ...
-                    },
-                    {
-                        "trip_id": "2",
-                        ...
-                    }]
+            - a list of json file paths
+
+            - a data page (the contents of a json file), e.g.
+                {
+                    "version": "x.y.z",
+                    "data": {
+                        "record_type": [{
+                            "trip_id": "1",
+                            ...
+                        },
+                        {
+                            "trip_id": "2",
+                            ...
+                        }]
+                    }
                 }
-            }
 
-        - a list of data pages
+            - a list of data pages
 
-        - a dict of { Provider : [data page] }
+            - a dict of { Provider : [data page] }
+
+        :record_type: One of `status_changes` or `trips`.
+
+        :table: The name of the table to load data to.
+
+        Additional keyword arguments are passed-through to `load_from_df`.
         """
         def __valid_path(p):
             """
@@ -171,42 +245,69 @@ class ProviderDataLoader():
         # source is a single data page
         if isinstance(source, dict) and "data" in source and record_type in source["data"]:
             records = source["data"][record_type]
-            self.load_from_records(
-                records, record_type, table, before_load=before_load, stage_first=stage_first)
+            self.load_from_records(records, record_type, table, **kwargs)
 
         # source is a list of data pages
         elif isinstance(source, list) and all([isinstance(s, dict) and "data" in s for s in source]):
             for page in source:
-                self.load_from_source(
-                    page, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_source(page, record_type, table, **kwargs)
 
         # source is a dict of Provider => list of data pages
         elif isinstance(source, dict) and all(isinstance(k, mds.providers.Provider) for k in source.keys()):
             for _, pages in source.items():
-                self.load_from_source(
-                    pages, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_source(pages, record_type, table, **kwargs)
 
         # source is a list of file paths
         elif isinstance(source, list) and any([__valid_path(p) for p in source]):
             # load only the valid paths
             for path in [p for p in source if __valid_path(p)]:
-                self.load_from_source(
-                    path, record_type, table, before_load=before_load, stage_first=stage_first)
+                self.load_from_source(path, record_type, table, **kwargs)
 
         # source is a single (valid) file path
         elif __valid_path(source):
-            self.load_from_file(
-                source, record_type, table, before_load=before_load, stage_first=stage_first)
+            self.load_from_file(source, record_type, table, **kwargs)
 
         else:
             print(f"Couldn't recognize source with type '{type(source)}'. Skipping.")
 
-    def load_status_changes(self, sources, table=mds.STATUS_CHANGES, before_load=None, stage_first=True):
+    def load_status_changes(self, source, **kwargs):
         """
-        Load status_changes data from :sources: using the connection defined by :engine:.
+        Load MDS status_changes data.
 
-        By default, stages the load into a temp table before upserting to the final destination.
+        Required positional arguments:
+
+        :source: The data source to load, which could be any of:
+
+            - a list of json file paths
+
+            - a data page (the contents of a json file), e.g.
+                {
+                    "version": "x.y.z",
+                    "data": {
+                        "status_changes": [{
+                            "provider_id": "...",
+                            ...
+                        },
+                        {
+                            "provider_id": "...",
+                            ...
+                        }]
+                    }
+                }
+
+            - a list of data pages
+
+            - a dict of { Provider : [data page] }
+
+        Optional keyword arguments:
+
+        :table: The name of the table to load data to, by default `mds.STATUS_CHANGES`.
+
+        Additional keyword arguments are passed-through to `load_from_df`.
         """
+        table = kwargs.pop("table", mds.STATUS_CHANGES)
+        before_load = kwargs.pop("before_load", None)
+
         def __before_load(df):
             """
             Helper converts JSON cols and ensures optional cols exist
@@ -217,15 +318,46 @@ class ProviderDataLoader():
             df["associated_trips"] = df["associated_trips"].apply(lambda d: d if isinstance(d, list) else [])
             return before_load(df) if before_load else df
 
-        self.load_from_source(sources, mds.STATUS_CHANGES, table,
-                              before_load=__before_load, stage_first=stage_first)
+        self.load_from_source(sources, mds.STATUS_CHANGES, table, before_load=__before_load, **kwargs)
 
-    def load_trips(self, sources, table=mds.TRIPS, before_load=None, stage_first=True):
+    def load_trips(self, source, **kwargs):
         """
-        Load trips data from :sources: using the connection defined by :engine:.
+        Load MDS trips data.
 
-        By default, stages the load into a temp table before upserting to the final destination.
+        Required positional arguments:
+
+        :source: The data source to load, which could be any of:
+
+            - a list of json file paths
+
+            - a data page (the contents of a json file), e.g.
+                {
+                    "version": "x.y.z",
+                    "data": {
+                        "trips": [{
+                            "provider_id": "...",
+                            ...
+                        },
+                        {
+                            "provider_id": "...",
+                            ...
+                        }]
+                    }
+                }
+
+            - a list of data pages
+
+            - a dict of { Provider : [data page] }
+
+        Optional keyword arguments:
+
+        :table: The name of the table to load data to, by default `mds.TRIPS`.
+
+        Additional keyword arguments are passed-through to `load_from_df`.
         """
+        table = kwargs.pop("table", mds.TRIPS)
+        before_load = kwargs.pop("before_load", None)
+
         def __before_load(df):
             """
             Helper converts JSON cols and ensures optional cols exist
@@ -234,5 +366,4 @@ class ProviderDataLoader():
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
             return before_load(df) if before_load else df
 
-        self.load_from_source(sources, mds.TRIPS, table,
-                              before_load=__before_load, stage_first=stage_first)
+        self.load_from_source(sources, mds.TRIPS, table, before_load=__before_load, **kwargs)
