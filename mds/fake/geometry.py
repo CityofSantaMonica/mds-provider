@@ -27,28 +27,50 @@ def point_within(boundary):
 
     return point
 
-def point_nearby(point, dist, bearing=None):
+def point_nearby(point, dist, bearing=None, boundary=None):
     """
     Create a random point :dist: meters from :point:
 
     Uses the Haversine formula to compute a new lat/lon given a distance and
     bearing. Uses the provided bearing, or random if None.
+    If boundary is provided, the returned point will lie within that boundary.
+    If it proves difficult to find a point at the specified distance within the
+    boundary, the returned point may lie less than :dist: meters from :point:.
 
     See: http://www.movable-type.co.uk/scripts/latlong.html#destPoint
     """
-    lat1 = math.radians(point.y)
-    lon1 = math.radians(point.x)
-    ang_dist = dist / 6378100 # radius of Earth in meters
-    bearing = random.uniform(0, 2*math.pi) if bearing is None else bearing
+    if boundary is None:
+        lat1 = math.radians(point.y)
+        lon1 = math.radians(point.x)
+        ang_dist = dist / 6378100 # radius of Earth in meters
+        bearing = random.uniform(0, 2*math.pi) if bearing is None else bearing
 
-    # calc the new latitude
-    lat2 = math.asin(math.sin(lat1) * math.cos(ang_dist) + 
-                     math.cos(lat1) * math.sin(ang_dist) * math.cos(bearing))
+        # calc the new latitude
+        lat2 = math.asin(math.sin(lat1) * math.cos(ang_dist) +
+                        math.cos(lat1) * math.sin(ang_dist) * math.cos(bearing))
 
-    # calc the new longitude
-    lon2 = lon1 + math.atan2(math.sin(bearing) * math.sin(ang_dist) * math.cos(lat1),
-                             math.cos(ang_dist) - math.sin(lat1) * math.sin(lat2))
+        # calc the new longitude
+        lon2 = lon1 + math.atan2(math.sin(bearing) * math.sin(ang_dist) * math.cos(lat1),
+                                math.cos(ang_dist) - math.sin(lat1) * math.sin(lat2))
 
-    # return the new point
-    return Point(math.degrees(lon2), math.degrees(lat2))
+        # return the new point
+        return Point(math.degrees(lon2), math.degrees(lat2))
+    else:
+        MAX_TRIES = 50 if bearing is None else 1
 
+        for _ in range(MAX_TRIES):
+            end_point = point_nearby(point, dist, bearing)
+            if boundary.contains(end_point):
+                return end_point
+
+        # If we got here it's possible there was no point at that exact distance and bearing
+        # from our starting point within the boundary; or maybe we were just unlucky.
+        # Shrink the distance to the endpoint until we find one inside the boundary.
+        if not boundary.contains(point):
+            raise ValueError(f"Cannot find point nearby the starting point {point}, which is outside the given boundary.")
+
+        while not boundary.contains(end_point):
+            dist = dist * 0.9
+            end_point = point_nearby(point, dist, bearing)
+
+        return end_point
