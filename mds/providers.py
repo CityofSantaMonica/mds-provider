@@ -80,6 +80,6 @@ def get_registry(ref=DEFAULT_REF, file=None):
         url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
         with requests.get(url, stream=True) as r:
             lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
-            __parse(line)
+            __parse(lines)
 
     return providers
