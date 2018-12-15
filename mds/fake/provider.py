@@ -65,16 +65,16 @@ class ProviderDataGenerator:
         else:
             self.propulsion_types = schema.propulsion_types()
 
-    def devices(self, N, provider):
+    def devices(self, N, provider_name, provider_id=None):
         """
         Create a list of length :N: representing devices operated by :provider:.
         """
         devices = []
-        provider_id = uuid.uuid4()
+        provider_id = provider_id or uuid.uuid4()
 
         for _ in range(N):
             device = dict(provider_id=provider_id,
-                          provider_name=provider,
+                          provider_name=provider_name,
                           device_id=uuid.uuid4(),
                           vehicle_id=random_string(6),
                           vehicle_type=random.choice(self.vehicle_types),
