@@ -318,7 +318,7 @@ class ProviderDataLoader():
             df["associated_trips"] = df["associated_trips"].apply(lambda d: d if isinstance(d, list) else [])
             return before_load(df) if before_load else df
 
-        self.load_from_source(sources, mds.STATUS_CHANGES, table, before_load=__before_load, **kwargs)
+        self.load_from_source(source, mds.STATUS_CHANGES, table, before_load=__before_load, **kwargs)
 
     def load_trips(self, source, **kwargs):
         """
@@ -366,4 +366,4 @@ class ProviderDataLoader():
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
             return before_load(df) if before_load else df
 
-        self.load_from_source(sources, mds.TRIPS, table, before_load=__before_load, **kwargs)
+        self.load_from_source(source, mds.TRIPS, table, before_load=__before_load, **kwargs)
