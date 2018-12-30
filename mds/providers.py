@@ -56,6 +56,21 @@ class Provider():
         return Provider(**_kwargs)
 
 
+def filter(providers, names):
+    """
+    Filters a list of Provider instances, given one or more case-insensitive names.
+    """
+    if names is None or len(names) == 0:
+        return providers
+
+    if isinstance(names, str):
+        names = [names]
+
+    names = [n.lower() for n in names]
+
+    return [p for p in providers if p.provider_name.lower() in names]
+
+
 def get_registry(ref=DEFAULT_REF, file=None):
     """
     Parse a Provider registry file; by default, download the official registry from GitHub `master`.
