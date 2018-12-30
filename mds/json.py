@@ -6,7 +6,7 @@ from datetime import datetime
 import fiona
 import json
 import os
-import pandas
+import pandas as pd
 from pathlib import Path
 import requests
 import shapely.geometry
@@ -76,8 +76,20 @@ def read_data_file(src, record_type):
     else:
         payload = json.load(open(src, "r"))
 
-    data = payload["data"][record_type]
-    return payload["version"], pd.DataFrame.from_records(data)
+    if isinstance(payload, list):
+        data = []
+        version = payload[0]["version"]
+
+        for page in payload:
+            if page["version"] == version:
+                data.extend(page["data"][record_type])
+            else:
+                raise ValueError("Version mismatch detected.")
+    else:
+        data = payload["data"][record_type]
+        version = payload["version"]
+
+    return version, pd.DataFrame.from_records(data)
 
 
 class CustomJsonEncoder(json.JSONEncoder):
