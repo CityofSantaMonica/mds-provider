@@ -63,8 +63,8 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=Fal
         trip_distance = EXCLUDED.trip_distance,
         route = cast(EXCLUDED.route as json),
         accuracy = EXCLUDED.accuracy,
-        start_time = to_timestamp(EXCLUDED.start_time) at time zone 'UTC',
-        end_time = to_timestamp(EXCLUDED.end_time) at time zone 'UTC',
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
         parking_verification_url = EXCLUDED.parking_verification_url,
         standard_cost = EXCLUDED.standard_cost,
         actual_cost = EXCLUDED.actual_cost
@@ -111,4 +111,3 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=Fal
     { conflict_update if on_conflict_update else __conflict_nothing }
     ;
     """
-
