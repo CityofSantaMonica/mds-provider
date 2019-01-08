@@ -312,6 +312,7 @@ class ProviderDataLoader():
             """
             Helper converts JSON cols and ensures optional cols exist
             """
+            df.drop_duplicates(subset=["provider_id", "device_id", "event_time"], keep="last", inplace=True)
             self._json_cols_tostring(df, ["event_location"])
             df = self._add_missing_cols(df, ["battery_pct", "associated_trips"])
             df[["associated_trips"]] = df[["associated_trips"]].astype("object")
@@ -362,6 +363,7 @@ class ProviderDataLoader():
             """
             Helper converts JSON cols and ensures optional cols exist
             """
+            df.drop_duplicates(subset=["provider_id", "trip_id"], keep="last", inplace=True)
             self._json_cols_tostring(df, ["route"])
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
             return before_load(df) if before_load else df
