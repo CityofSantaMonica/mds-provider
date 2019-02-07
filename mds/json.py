@@ -52,13 +52,19 @@ def to_feature(shape, properties={}):
     """
     feature = shapely.geometry.mapping(shape)
     feature["properties"] = properties
+    feature["geometry"] = {}
 
     if isinstance(shape, shapely.geometry.Point):
-        feature["coordinates"] = list(feature["coordinates"])
+        feature["geometry"]["coordinates"] = list(feature["coordinates"])
     else:
         # assume shape is polygon (multipolygon will break)
-        feature["coordinates"] = [list(list(coords) for coords in part) for part in feature["coordinates"]]
+        feature["geometry"]["coordinates"] = [list(list(coords) for coords in part) for part in feature["coordinates"]]
 
+    # 'type' at the top level is Feature, and in 'geometry' should be set
+    feature["geometry"]["type"] = feature["type"]
+    feature["type"] = "Feature"
+    # 'coordinates' in the top level is not valid geoJSON.
+    feature.pop("coordinates")
     return feature
 
 def read_data_file(src, record_type):
@@ -125,7 +131,7 @@ class CustomJsonEncoder(json.JSONEncoder):
             else:
                 return str(obj)
 
-        if isinstance(obj, Point) or isinstance(obj, Polygon):
+        if isinstance(obj, shapely.geometry.Point) or isinstance(obj, shapely.geometry.Polygon):
             return to_feature(obj)
 
         if isinstance(obj, tuple):
