@@ -43,7 +43,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_c
         event_time,
         event_location,
         battery_pct,
-        associated_trips
+        associated_trip
     )
     SELECT
         cast(provider_id as uuid),
@@ -57,7 +57,7 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_c
         to_timestamp(event_time) at time zone 'UTC',
         cast(event_location as jsonb),
         battery_pct,
-        cast(associated_trips as uuid[])
+        cast(associated_trip as uuid)
     FROM "{source_table}"
     { on_conflict }
     ;
