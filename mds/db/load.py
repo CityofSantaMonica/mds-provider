@@ -310,9 +310,7 @@ class ProviderDataLoader():
             """
             df.drop_duplicates(subset=["provider_id", "device_id", "event_time"], keep="last", inplace=True)
             self._json_cols_tostring(df, ["event_location"])
-            df = self._add_missing_cols(df, ["battery_pct", "associated_trips"])
-            df[["associated_trips"]] = df[["associated_trips"]].astype("object")
-            df["associated_trips"] = df["associated_trips"].apply(lambda d: d if isinstance(d, list) else [])
+            df = self._add_missing_cols(df, ["battery_pct", "associated_trip"])
             return before_load(df) if before_load else df
 
         self.load_from_source(source, mds.STATUS_CHANGES, table, before_load=__before_load, **kwargs)

@@ -251,10 +251,6 @@ class ProviderDataGenerator:
                                          event_time=event_time,
                                          event_location=feature)
 
-            # maybe add an empty associated_trips array
-            if random.choice([False, True]):
-                service_start["associated_trips"] = random.choice([None, []])
-
             # reset the battery for electric devices
             if self.has_battery(device):
                 self.recharge_battery(device)
