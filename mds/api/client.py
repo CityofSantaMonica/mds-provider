@@ -3,10 +3,9 @@ MDS Provider API client implementation.
 """
 
 from datetime import datetime
-import json
-import mds
 import time
 
+import mds
 from mds.api.auth import auth_types
 from mds.json import CustomJsonEncoder
 from mds.providers import get_registry, Provider
@@ -159,10 +158,10 @@ class ProviderClient():
                     The default is to issue the request to all Providers.
 
         :start_time: Filters for status changes where `event_time` occurs at or after the given time
-                     Should be a datetime object or numeric representation of UNIX seconds
+                     Should be a datetime object or int UNIX milliseconds
 
         :end_time: Filters for status changes where `event_time` occurs before the given time
-                   Should be a datetime object or numeric representation of UNIX seconds
+                   Should be a datetime object or int UNIX milliseconds
 
         :paging: True (default) to follow paging and request all available data.
                  False to request only the first page.
@@ -212,10 +211,10 @@ class ProviderClient():
         :vehicle_id: Filters for trips taken by the given vehicle.
 
         :min_end_time: Filters for trips where `end_time` occurs at or after the given time.
-                       Should be a datetime object or numeric representation of UNIX seconds
+                       Should be a datetime object or int UNIX milliseconds
 
         :max_end_time: Filters for trips where `end_time` occurs before the given time.
-                       Should be a datetime object or numeric representation of UNIX seconds
+                       Should be a datetime object or int UNIX milliseconds
 
         :paging: True (default) to follow paging and request all available data.
                  False to request only the first page.
