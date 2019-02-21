@@ -11,15 +11,15 @@ See [`mds-provider-services`](https://github.com/CityofSantaMonica/mds-provider-
 Install with `pip`:
 
 ```bash
-$ pip install -e git+https://github.com/CityofSantaMonica/mds-provider@master#egg=mds_provider
+pip install -e git+https://github.com/CityofSantaMonica/mds-provider@master#egg=mds_provider
 ```
 
 Or with `python` directly:
 
-```
-$ git clone https://github.com/CityofSantaMonica/mds-provider.git
-$ cd mds-provider
-$ python setup.py install
+```bash
+git clone https://github.com/CityofSantaMonica/mds-provider.git
+cd mds-provider
+python setup.py install
 ```
 
 ## Package organization
