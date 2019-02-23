@@ -41,41 +41,32 @@ class Provider():
         else:
             return None
 
-    def configure(self, config, use_id=False):
+    def configure(self, config):
         """
-        Merge Provider-specific data from :config: with this provider.
-
-        Returns a new Provider with the merged data.
-
-        :use_id: is a flag that, when True, will lookup this Provider by provider_id inside the :config:
-        (e.g. for using a dict of configuration for different Providers). If the provider_id isn't found,
-        returns this Provider un-modified.
+        Merge attributes from :config: into this Provider instance.
         """
-        if use_id:
-            if self.provider_id in config:
-                config = config[self.provider_id]
-            elif str(self.provider_id) in config:
-                config = config[str(self.provider_id)]
-            else:
-                return self
-
         _kwargs = { **vars(self), **config }
-        return Provider(**_kwargs)
+        Provider.__init__(self, **_kwargs)
+        return self
 
+    @classmethod
+    def Get(cls, provider, config=None, ref=DEFAULT_REF, file=None):
+        """
+        Obtain a Provider instance from the registry or a local file, using the given identifier
+        (provider_id or provider_name).
 
-def filter(providers, names):
-    """
-    Filters a list of Provider instances, given one or more case-insensitive names.
-    """
-    if names is None or len(names) == 0:
-        return providers
+        :config: A dict of attributes to merge with the Provider instance.
+        """
+        registry = get_registry(ref=ref, file=file)
 
-    if isinstance(names, str):
-        names = [names]
+        providers = [p for p in registry if p.provider_name.lower() == provider.lower() or
+                                            (isinstance(provider, UUID) and p.provider_id == provider) or
+                                            (isinstnace(provider, str) and p.provider_id == UUID(provider))]
 
-    names = [n.lower() for n in names]
-
-    return [p for p in providers if p.provider_name.lower() in names]
+        if len(providers) == 1:
+            return providers[0].configure(config) if config else providers[0]
+        else:
+            raise ValueError(f"Can not obtain a single provider with name '{name}'.")
 
 
 def get_registry(ref=DEFAULT_REF, file=None):

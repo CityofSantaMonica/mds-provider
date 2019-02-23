@@ -8,28 +8,40 @@ import time
 import mds
 from mds.api.auth import auth_types
 from mds.json import CustomJsonEncoder
-from mds.providers import get_registry, Provider
+from mds.providers import Provider
+from mds.version import Version, mds_version_supported
 
 
 class ProviderClient():
     """
     Client for MDS Provider APIs
     """
-    def __init__(self, providers=None, ref=None):
+    def __init__(self, **kwargs):
         """
         Initialize a new ProviderClient object.
 
-        :providers: is a list of Providers this client tracks by default. If None is given, downloads and uses the official Provider registry.
+        Supported keyword args:
 
-        When using the official Providers registry, :ref: could be any of:
-            - git branch name
-            - commit hash (long or short)
-            - git tag
+        :provider: a Provider instance that this client uses by default.
+
+        :version: the MDS version to target, e.g. `x.y.z`. Can be str or `mds.version.Version` instance. By default,
+                  By default, target the minimum version of MDS supported by the current version of this library.
         """
-        self.providers = providers if providers is not None else get_registry(ref)
         self.encoder = CustomJsonEncoder(date_format="unix")
+        self.provider = kwargs.pop("provider", None)
+        self.version = Version(kwargs.pop("version", Version.MDS()))
 
-    def _auth_session(self, provider):
+        if not mds_version_supported(self.version):
+            raise ValueError(f"MDS version {self.version} is not supported by the current version of this library.")
+
+    def _media_type_version_header(self):
+        """
+        The custom MDS media-type and version header, using this client's version
+        """
+        version = f"{self.version.tuple[0]}.{self.version.tuple[1]}"
+        return f"application/vnd.mds.provider+json;version={version}"
+
+    def _session(self, provider):
         """
         Internal helper to establish an authenticated session with the provider.
 
@@ -46,7 +58,7 @@ class ProviderClient():
 
     def _build_url(self, provider, endpoint):
         """
-        Internal helper for building API urls.
+        Build an API url for a provider's endpoint.
         """
         url = provider.mds_api_url
 
@@ -57,11 +69,11 @@ class ProviderClient():
 
         return url
 
-    def _request(self, providers, endpoint, params, paging, rate_limit):
+    def _request(self, provider, endpoint, params, paging, rate_limit):
         """
-        Internal helper for sending requests.
+        Send one or more requests to a provider's endpoint.
 
-        Returns a dict of provider => payload(s).
+        Returns a list of payloads, with length corresponding to the number of non-empty responses.
         """
         def __describe(res):
             """
@@ -77,7 +89,7 @@ class ProviderClient():
 
         def __has_data(page):
             """
-            Checks if this :page: has a "data" property with a non-empty payload
+            Checks if this page has a "data" property with a non-empty payload.
             """
             data = page["data"] if "data" in page else {"__payload__": []}
             payload = data[endpoint] if endpoint in data else []
@@ -86,81 +98,80 @@ class ProviderClient():
 
         def __next_url(page):
             """
-            Gets the next URL or None from :page:
+            Gets the next URL or None from page.
             """
             return page["links"].get("next") if "links" in page else None
 
-        # create a request url for each provider
-        urls = [self._build_url(p, endpoint) for p in providers]
+        url = self._build_url(provider, endpoint)
+        results = []
 
-        # keyed by provider
-        results = {}
+        # establish an authenticated session
+        session = self._session(provider)
 
-        for i in range(len(providers)):
-            provider, url = providers[i], urls[i]
+        # get the initial page of data
+        r = session.get(url, params=params)
 
-            # establish an authenticated session
-            session = self._auth_session(provider)
+        if r.status_code is not 200:
+            __describe(r)
+            return results
 
-            # get the initial page of data
-            r = session.get(url, params=params)
+        this_page = r.json()
+
+        if __has_data(this_page):
+            results.append(this_page)
+
+        # get subsequent pages of data
+        next_url = __next_url(this_page)
+        while paging and next_url:
+            r = session.get(next_url)
 
             if r.status_code is not 200:
                 __describe(r)
-                continue
+                break
 
             this_page = r.json()
 
-            # track the list of pages per provider
-            results[provider] = [this_page] if __has_data(this_page) else []
+            if __has_data(this_page):
+                results.append(this_page)
 
-            # get subsequent pages of data
             next_url = __next_url(this_page)
-            while paging and next_url:
-                r = session.get(next_url)
 
-                if r.status_code is not 200:
-                    __describe(r)
-                    break
-
-                this_page = r.json()
-
-                if __has_data(this_page):
-                    results[provider].append(this_page)
-            
-                next_url = __next_url(this_page)
-
-                if next_url and rate_limit:
-                    time.sleep(rate_limit)
+            if next_url and rate_limit:
+                time.sleep(rate_limit)
 
         return results
 
     def _date_format(self, dt):
         """
-        Internal helper to format datetimes for querystrings.
+        Format datetimes for querystrings.
         """
+        if dt is None:
+            return None
         return self.encoder.encode(dt) if isinstance(dt, datetime) else int(dt)
 
-    def get_status_changes(
-        self,
-        providers=None,
-        start_time=None,
-        end_time=None,
-        paging=True,
-        rate_limit=0,
-        **kwargs):
+    def _provider_or_raise(self, **kwargs):
         """
-        Request Status Changes data. Returns a dict of provider => list of status_changes payload(s)
+        Get a Provider instance from kwargs, self, or raise an error.
+        """
+        provider = kwargs.pop("provider", None) or self.provider
+        if provider is None:
+            raise ValueError("Provider instance not found for ProviderClient")
+
+        return provider
+
+    def get_status_changes(self, **kwargs):
+        """
+        Request status changes, returning a list of non-empty payloads.
 
         Supported keyword args:
 
-        :providers: One or more Providers to issue this request to.
-                    The default is to issue the request to all Providers.
+        :provider: Provider to issue this request to.
+                   By default issue the request to this client's Provider instance.
 
-        :start_time: Filters for status changes where `event_time` occurs at or after the given time
+        :start_time: Filters for status changes where event_time occurs at or after the given time
                      Should be a datetime object or int UNIX milliseconds
 
-        :end_time: Filters for status changes where `event_time` occurs before the given time
+        :end_time: Filters for status changes where event_time occurs before the given time
                    Should be a datetime object or int UNIX milliseconds
 
         :paging: True (default) to follow paging and request all available data.
@@ -168,52 +179,36 @@ class ProviderClient():
 
         :rate_limit: Number of seconds of delay to insert between paging requests.
         """
-        if providers is None:
-            providers = self.providers
+        provider = self._provider_or_raise(**kwargs)
+        start_time = self._date_format(kwargs.pop("start_time", None))
+        end_time = self._date_format(kwargs.pop("end_time", None))
+        paging = bool(kwargs.pop("paging", True))
+        rate_limit = int(kwargs.pop("rate_limit", 0))
 
-        # convert datetimes to querystring friendly format
-        if start_time is not None:
-            start_time = self._date_format(start_time)
-        if end_time is not None:
-            end_time = self._date_format(end_time)
-
-        # gather all the params together
         params = {
             **dict(start_time=start_time, end_time=end_time),
             **kwargs
         }
 
-        # make the request(s)
-        status_changes = self._request(providers, mds.STATUS_CHANGES, params, paging, rate_limit)
+        return self._request(provider, mds.STATUS_CHANGES, params, paging, rate_limit)
 
-        return status_changes
-
-    def get_trips(
-        self,
-        providers=None,
-        device_id=None,
-        vehicle_id=None,
-        min_end_time=None,
-        max_end_time=None,
-        paging=True,
-        rate_limit=0,
-        **kwargs):
+    def get_trips(self, **kwargs):
         """
-        Request Trips data. Returns a dict of provider => list of trips payload(s).
+        Request trips, returning a list of non-empty payloads.
 
         Supported keyword args:
 
-        :providers: One or more Providers to issue this request to.
-                    The default is to issue the request to all Providers.
+        :provider: Provider to issue this request to.
+                   By default issue the request to this client's Provider instance.
 
         :device_id: Filters for trips taken by the given device.
 
         :vehicle_id: Filters for trips taken by the given vehicle.
 
-        :min_end_time: Filters for trips where `end_time` occurs at or after the given time.
+        :min_end_time: Filters for trips where end_time occurs at or after the given time.
                        Should be a datetime object or int UNIX milliseconds
 
-        :max_end_time: Filters for trips where `end_time` occurs before the given time.
+        :max_end_time: Filters for trips where end_time occurs before the given time.
                        Should be a datetime object or int UNIX milliseconds
 
         :paging: True (default) to follow paging and request all available data.
@@ -221,31 +216,15 @@ class ProviderClient():
 
         :rate_limit: Number of seconds of delay to insert between paging requests.
         """
-        if providers is None:
-            providers = self.providers
+        provider = self._provider_or_raise(**kwargs)
+        min_end_time = self._date_format(kwargs.pop("min_end_time", None))
+        max_end_time = self._date_format(kwargs.pop("max_end_time", None))
+        paging = bool(kwargs.pop("paging", True))
+        rate_limit = int(kwargs.pop("rate_limit", 0))
 
-        # compatibility with the pre-0.3.0 API
-        if "start_time" in kwargs and min_end_time is None:
-            min_end_time = kwargs["start_time"]
-            del kwargs["start_time"]
-
-        if "end_time" in kwargs and max_end_time is None:
-            max_end_time = kwargs["end_time"]
-            del kwargs["end_time"]
-
-        # convert datetimes to querystring friendly format
-        if min_end_time is not None:
-            min_end_time = self._date_format(min_end_time)
-        if max_end_time is not None:
-            max_end_time = self._date_format(max_end_time)
-
-        # gather all the params togethers
         params = { 
             **dict(device_id=device_id, vehicle_id=vehicle_id, min_end_time=min_end_time, max_end_time=max_end_time),
             **kwargs
         }
 
-        # make the request(s)
-        trips = self._request(providers, mds.TRIPS, params, paging, rate_limit)
-
-        return trips
+        return self._request(provider, mds.TRIPS, params, paging, rate_limit)
