@@ -5,20 +5,29 @@ SQL scripts for MDS Provider database CRUD.
 import mds
 
 
-__conflict_nothing = "ON CONFLICT DO NOTHING"
+def on_conflict_statement(on_conflict_update=None):
+    """
+    Generate an appropriate ON CONFLICT... statement.
+
+    :on_conflict_update: a tuple of (condition, actions) used to generate a statement like
+    ON CONFLICT :condition: DO UPDATE SET :actions:
+    """
+    if on_conflict_update:
+        condition, actions = on_conflict_update
+        if isinstance(actions, list):
+            actions = ",".join(actions)
+        elif isinstance(actions, dict):
+            actions = ",".join([f"{k} = {v}" for k,v in actions.items()])
+        return f"ON CONFLICT {condition} DO UPDATE SET {actions}"
+    else:
+        return "ON CONFLICT DO NOTHING"
 
 
-def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_conflict_update=False):
+def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_conflict_update=None):
     """
     Generate an INSERT INTO statement from :source_table: to the Status Changes table.
     """
-    conflict_update = """ON CONFLICT (provider_id, device_id, event_time) DO UPDATE SET
-        event_type = cast(EXCLUDED.event_type as event_types),
-        event_type_reason = cast(EXCLUDED.event_type_reason as event_type_reasons),
-        event_location = cast(EXCLUDED.event_location as json),
-        battery_pct = EXCLUDED.battery_pct,
-        associated_trips = cast(EXCLUDED.associated_trips as uuid[])
-    """
+    on_conflict = on_conflict_statement(on_conflict_update)
 
     return f"""
     INSERT INTO "{dest_table}"
@@ -50,25 +59,15 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_c
         battery_pct,
         cast(associated_trips as uuid[])
     FROM "{source_table}"
-    { conflict_update if on_conflict_update else __conflict_nothing }
+    { on_conflict }
     ;
     """
 
-def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=False):
+def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=None):
     """
     Generate an INSERT INTO statement from :source_table: to the Trips table.
     """
-    conflict_update = """ON CONFLICT (provider_id, trip_id) DO UPDATE SET
-        trip_duration = EXCLUDED.trip_duration,
-        trip_distance = EXCLUDED.trip_distance,
-        route = cast(EXCLUDED.route as json),
-        accuracy = EXCLUDED.accuracy,
-        start_time = EXCLUDED.start_time,
-        end_time = EXCLUDED.end_time,
-        parking_verification_url = EXCLUDED.parking_verification_url,
-        standard_cost = EXCLUDED.standard_cost,
-        actual_cost = EXCLUDED.actual_cost
-    """
+    on_conflict = on_conflict_statement(on_conflict_update)
 
     return f"""
     INSERT INTO "{dest_table}"
@@ -108,6 +107,6 @@ def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=Fal
         standard_cost,
         actual_cost
     FROM "{source_table}"
-    { conflict_update if on_conflict_update else __conflict_nothing }
+    { on_conflict }
     ;
     """

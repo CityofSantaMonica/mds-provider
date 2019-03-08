@@ -77,9 +77,6 @@ class ProviderDataLoader():
         `stage_first=3`
 
         stages to a random temp table with 26*26*26 possible naming choices.
-
-        :on_conflict_update: False (default) to ignore INSERT conflicts. True to perform an UDPATE using newer values.
-        Only applies when :stage_first: evaluates True.
         """
         if "engine" in kwargs:
             self.engine = kwargs["engine"]
@@ -87,7 +84,6 @@ class ProviderDataLoader():
             self.engine = data_engine(uri=uri, **kwargs)
 
         self.stage_first = kwargs.get("stage_first", True)
-        self.on_conflict_update = kwargs.get("on_conflict_update", False)
 
     def _json_cols_tostring(self, df, cols):
         """
@@ -128,12 +124,12 @@ class ProviderDataLoader():
 
         stages to a random temp table with 26*26*26 possible naming choices.
 
-        :on_conflict_update: False (default) to ignore INSERT conflicts. True to perform an UDPATE using newer values.
+        :on_conflict_update: tuple (condition, actions) for an ON CONFLICT :condition: DO UPDATE SET :actions: statement.
         Only applies when :stage_first: evaluates True.
         """
         before_load = kwargs.get("before_load", None)
         stage_first = kwargs.get("stage_first", self.stage_first)
-        on_conflict_update = kwargs.get("on_conflict_update", self.on_conflict_update)
+        on_conflict_update = kwargs.get("on_conflict_update", None)
 
         # run any pre-processors to transform the df
         if before_load is not None:
