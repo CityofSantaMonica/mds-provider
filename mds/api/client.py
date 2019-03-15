@@ -9,7 +9,7 @@ import mds
 from mds.api.auth import auth_types
 from mds.json import CustomJsonEncoder
 from mds.providers import Provider
-from mds.version import Version, mds_version_supported
+from mds.version import Version
 
 
 class ProviderClient():
@@ -31,7 +31,7 @@ class ProviderClient():
         self.provider = kwargs.pop("provider", None)
         self.version = Version(kwargs.pop("version", Version.MDS()))
 
-        if not mds_version_supported(self.version):
+        if not Version.Supported(self.version):
             raise ValueError(f"MDS version {self.version} is not supported by the current version of this library.")
 
     def _media_type_version_header(self):

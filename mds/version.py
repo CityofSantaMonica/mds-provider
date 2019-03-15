@@ -73,10 +73,10 @@ class Version():
         """
         return Version(__mds_min_version__)
 
-
-def mds_version_supported(version):
-    """
-    Return True if the given MDS version is supported by the library version.
-    """
-    version = version if isinstance(version, Version) else Version(version)
-    return Version.MDS() <= version
+    @classmethod
+    def Supported(cls, version):
+        """
+        Return True if the given MDS version is supported by the library version.
+        """
+        version = version if isinstance(version, Version) else Version(version)
+        return Version.MDS() <= version

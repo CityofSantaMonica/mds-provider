@@ -9,7 +9,7 @@ import requests
 
 class ProviderSchema():
     """
-    Represents a MDS Provider qJSON Schema.
+    Represents a MDS Provider JSON Schema.
     """
     SCHEMA_ROOT = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
     DEFAULT_REF = "master"
