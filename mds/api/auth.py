@@ -44,3 +44,22 @@ class OAuthClientCredentialsAuth(AuthorizationToken):
 
         return self.auth_token_session(provider)
 
+class SpinClientCredentialsAuth(AuthorizationToken):
+    """
+    Mixin implmeneting the Spin 
+    Authorization Scheme, which is documented at 
+    https://web.spin.pm/datafeeds
+    """
+    def spin_oauth_session(self, provider):
+        """
+        Acquires the bearer token for Spin
+        """
+        payload = {
+            "email": provider.email,
+            "password": provider.password,
+            "grant_type": "api"
+        }
+        r = requests.post(provider.token, params=payload)
+
+        provider.token = r.json()['jwt']
+        return self.auth_token_session(provider)

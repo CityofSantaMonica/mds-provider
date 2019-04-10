@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 import mds
 import time
-from mds.api.auth import OAuthClientCredentialsAuth
+from mds.api.auth import OAuthClientCredentialsAuth, SpinClientCredentialsAuth
 from mds.providers import get_registry, Provider
 
 
@@ -34,6 +34,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
         if hasattr(provider, "token") and not hasattr(provider, "token_url"):
             # auth token defined by provider
             return self.auth_token_session(provider)
+        elif hasattr(provider, "email"): 
+            return self.spin_oauth_session(provider)
         else:
             # OAuth 2.0 client_credentials grant flow
             return self.oauth_session(provider)
