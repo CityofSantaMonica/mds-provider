@@ -34,7 +34,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
         if hasattr(provider, "token") and not hasattr(provider, "token_url"):
             # auth token defined by provider
             return self.auth_token_session(provider)
-        elif hasattr(provider, "email"): 
+        elif provider.provider_id == '70aa475d-1fcd-4504-b69c-2eeb2107f7be': 
+            # test if Spin API 
             return self.spin_oauth_session(provider)
         else:
             # OAuth 2.0 client_credentials grant flow
