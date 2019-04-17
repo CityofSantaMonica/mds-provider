@@ -46,17 +46,16 @@ class OAuthClientCredentialsAuth(AuthorizationToken):
 
 class SpinClientCredentialsAuth(AuthorizationToken):
     """
-    Mixin implmeneting the Spin 
-    Authorization Scheme, which is documented at 
+    Mixin implementing the Spin authentication scheme, documented at:
     https://web.spin.pm/datafeeds
 
-    Currently, your config needs a 
-    :email 
-    :password 
-    :mds_api_url (see PR https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
-    :token_url (try https://web.spin.pm/api/v1/auth_tokens)
+    Currently, your config needs:
+    :email:
+    :password:
+    :mds_api_url: (see https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
+    :token_url: (try https://web.spin.pm/api/v1/auth_tokens)
     """
-    def spin_oauth_session(self, provider):
+    def spin_auth_session(self, provider):
         """
         Acquires the bearer token for Spin
         """
