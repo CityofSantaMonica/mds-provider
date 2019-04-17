@@ -10,7 +10,7 @@ from mds.api.auth import OAuthClientCredentialsAuth, SpinClientCredentialsAuth
 from mds.providers import get_registry, Provider
 
 
-class ProviderClient(OAuthClientCredentialsAuth):
+class ProviderClient(SpinClientCredentialsAuth, OAuthClientCredentialsAuth):
     """
     Client for MDS Provider APIs
     """
@@ -33,8 +33,8 @@ class ProviderClient(OAuthClientCredentialsAuth):
         """
         if hasattr(provider, "token") and not hasattr(provider, "token_url"):
             # auth token defined by provider
-            return self.auth_token_session(provider)
-        elif provider.provider_id == '70aa475d-1fcd-4504-b69c-2eeb2107f7be': 
+            return self.(provider)
+        elif provider.provider_name == 'Spin': 
             # test if Spin API 
             return self.spin_oauth_session(provider)
         else:

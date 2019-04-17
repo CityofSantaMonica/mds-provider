@@ -49,6 +49,12 @@ class SpinClientCredentialsAuth(AuthorizationToken):
     Mixin implmeneting the Spin 
     Authorization Scheme, which is documented at 
     https://web.spin.pm/datafeeds
+
+    Currently, your config needs a 
+    :email 
+    :password 
+    :mds_api_url (see PR https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
+    :token_url (try https://web.spin.pm/api/v1/auth_tokens)
     """
     def spin_oauth_session(self, provider):
         """
@@ -59,7 +65,7 @@ class SpinClientCredentialsAuth(AuthorizationToken):
             "password": provider.password,
             "grant_type": "api"
         }
-        r = requests.post(provider.token, params=payload)
+        r = requests.post(provider.token_url, params=payload)
 
         provider.token = r.json()['jwt']
         return self.auth_token_session(provider)
