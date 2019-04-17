@@ -33,10 +33,10 @@ class ProviderClient(SpinClientCredentialsAuth, OAuthClientCredentialsAuth):
         """
         if hasattr(provider, "token") and not hasattr(provider, "token_url"):
             # auth token defined by provider
-            return self.(provider)
+            return self.auth_token_session(provider)
         elif provider.provider_name == 'Spin': 
-            # test if Spin API 
-            return self.spin_oauth_session(provider)
+            # Spin auth flow
+            return self.spin_auth_session(provider)
         else:
             # OAuth 2.0 client_credentials grant flow
             return self.oauth_session(provider)
