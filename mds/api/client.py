@@ -5,6 +5,7 @@ MDS Provider API client implementation.
 from datetime import datetime
 import time
 
+from ..json import CustomJsonEncoder
 from ..providers import Provider
 from ..schema import STATUS_CHANGES, TRIPS
 from ..version import Version
@@ -14,21 +15,23 @@ from .auth import auth_types
 
 class ProviderClient():
     """
-    Client for MDS Provider APIs
+    Client for MDS Provider APIs.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, provider=None, **kwargs):
         """
         Initialize a new ProviderClient object.
 
-        Supported keyword args:
+        Supported positional args:
 
         :provider: a Provider instance that this client uses by default.
+
+        Supported keyword args:
 
         :version: the MDS version to target, e.g. `x.y.z`. Can be str or `mds.version.Version` instance. By default,
                   By default, target the minimum version of MDS supported by the current version of this library.
         """
         self.encoder = CustomJsonEncoder(date_format="unix")
-        self.provider = kwargs.pop("provider", None)
+        self.provider = provider
         self.version = Version(kwargs.pop("version", Version.MDS()))
 
         if not Version.Supported(self.version):
@@ -149,24 +152,26 @@ class ProviderClient():
             return None
         return self.encoder.encode(dt) if isinstance(dt, datetime) else int(dt)
 
-    def _provider_or_raise(self, **kwargs):
+    def _provider_or_raise(self, provider):
         """
         Get a Provider instance from kwargs, self, or raise an error.
         """
-        provider = kwargs.pop("provider", None) or self.provider
+        provider = provider or self.provider
         if provider is None:
-            raise ValueError("Provider instance not found for ProviderClient")
+            raise ValueError("Provider instance not found for this ProviderClient.")
 
         return provider
 
-    def get_status_changes(self, **kwargs):
+    def get_status_changes(self, provider=None, **kwargs):
         """
         Request status changes, returning a list of non-empty payloads.
 
-        Supported keyword args:
+        Supported positional args:
 
         :provider: Provider to issue this request to.
                    By default issue the request to this client's Provider instance.
+
+        Supported keyword args:
 
         :start_time: Filters for status changes where event_time occurs at or after the given time
                      Should be a datetime object or int UNIX milliseconds
@@ -179,7 +184,7 @@ class ProviderClient():
 
         :rate_limit: Number of seconds of delay to insert between paging requests.
         """
-        provider = self._provider_or_raise(**kwargs)
+        provider = self._provider_or_raise(provider)
         start_time = self._date_format(kwargs.pop("start_time", None))
         end_time = self._date_format(kwargs.pop("end_time", None))
         paging = bool(kwargs.pop("paging", True))
@@ -192,14 +197,16 @@ class ProviderClient():
 
         return self._request(provider, STATUS_CHANGES, params, paging, rate_limit)
 
-    def get_trips(self, **kwargs):
+    def get_trips(self, provider=None, **kwargs):
         """
         Request trips, returning a list of non-empty payloads.
 
-        Supported keyword args:
+        Supported positional args:
 
         :provider: Provider to issue this request to.
                    By default issue the request to this client's Provider instance.
+
+        Supported keyword args:
 
         :device_id: Filters for trips taken by the given device.
 
@@ -216,7 +223,7 @@ class ProviderClient():
 
         :rate_limit: Number of seconds of delay to insert between paging requests.
         """
-        provider = self._provider_or_raise(**kwargs)
+        provider = self._provider_or_raise(provider)
         min_end_time = self._date_format(kwargs.pop("min_end_time", None))
         max_end_time = self._date_format(kwargs.pop("max_end_time", None))
         paging = bool(kwargs.pop("paging", True))
