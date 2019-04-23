@@ -57,16 +57,23 @@ class Provider():
 
         :config: A dict of attributes to merge with the Provider instance.
         """
-        registry = get_registry(ref=ref, file=file)
+        try:
+            provider = UUID(provider)
+        except ValueError:
+            pass
 
-        providers = [p for p in registry if p.provider_name.lower() == provider.lower() or
-                                            (isinstance(provider, UUID) and p.provider_id == provider) or
-                                            (isinstnace(provider, str) and p.provider_id == UUID(provider))]
+        def __filter(data, target):
+            return any([
+                isinstance(data, str) and target.provider_name.lower() == data.lower(),
+                isinstance(data, UUID) and target.provider_id == data
+            ])
+
+        providers = [p for p in get_registry(ref=ref, file=file) if __filter(provider, p)]
 
         if len(providers) == 1:
             return providers[0].configure(config) if config else providers[0]
         else:
-            raise ValueError(f"Can not obtain a single provider with name '{name}'.")
+            raise ValueError(f"Can not obtain a single provider matching '{provider}'.")
 
 
 def get_registry(ref=DEFAULT_REF, file=None):
