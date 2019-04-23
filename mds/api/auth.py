@@ -73,10 +73,11 @@ class SpinClientCredentialsAuth(AuthorizationToken):
     https://web.spin.pm/datafeeds
 
     Currently, your config needs:
-    :email:
-    :password:
-    :mds_api_url: (see https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
-    :token_url: (try https://web.spin.pm/api/v1/auth_tokens)
+
+    * email
+    * password
+    * mds_api_url (see https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
+    * token_url (try https://web.spin.pm/api/v1/auth_tokens)
     """
     def __init__(self, provider):
         """
