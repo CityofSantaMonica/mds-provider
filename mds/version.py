@@ -26,6 +26,8 @@ class Version():
 
         self.__version = self.__parse__(self.version_string)
 
+        self.tuple = self.__version.release
+
     def __parse__(self, version):
         """
         Create the internal representation of a version string.
@@ -52,12 +54,6 @@ class Version():
 
     def __repr__(self):
         return self.version_string
-
-    def tuple(self):
-        """
-        Get the int tuple representation of this `Version`.
-        """
-        return self.__version.release
 
     @classmethod
     def Library(cls):
