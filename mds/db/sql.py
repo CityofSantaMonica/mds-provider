@@ -2,7 +2,7 @@
 SQL scripts for MDS Provider database CRUD.
 """
 
-import mds
+from ..schema import STATUS_CHANGES, TRIPS
 
 
 def on_conflict_statement(on_conflict_update=None):
@@ -23,7 +23,7 @@ def on_conflict_statement(on_conflict_update=None):
         return "ON CONFLICT DO NOTHING"
 
 
-def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_conflict_update=None):
+def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, on_conflict_update=None):
     """
     Generate an INSERT INTO statement from :source_table: to the Status Changes table.
     """
@@ -63,7 +63,8 @@ def insert_status_changes_from(source_table, dest_table=mds.STATUS_CHANGES, on_c
     ;
     """
 
-def insert_trips_from(source_table, dest_table=mds.TRIPS, on_conflict_update=None):
+
+def insert_trips_from(source_table, dest_table=TRIPS, on_conflict_update=None):
     """
     Generate an INSERT INTO statement from :source_table: to the Trips table.
     """

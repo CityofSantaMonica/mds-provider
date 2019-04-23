@@ -27,6 +27,7 @@ def point_within(boundary):
 
     return point
 
+
 def point_nearby(point, dist, bearing=None, boundary=None):
     """
     Create a random point :dist: meters from :point:

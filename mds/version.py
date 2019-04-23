@@ -2,7 +2,7 @@
 Work with MDS versions.
 """
 
-import packaging
+from packaging.version import parse as _packaging_version_parse
 
 
 __version__ = "0.3.0"
@@ -30,7 +30,7 @@ class Version():
         """
         Create the internal representation of a version string.
         """
-        return packaging.version.parse(version)
+        return _packaging_version_parse(version)
 
     def __eq__(self, version2):
         return self.__version.__eq__(version2.__version)

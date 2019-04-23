@@ -2,5 +2,4 @@
 Work with MDS Provider data.
 """
 
-from mds.db.load import ProviderDataLoader
-
+from .load import data_engine, ProviderDataLoader

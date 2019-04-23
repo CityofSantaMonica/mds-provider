@@ -37,12 +37,14 @@ def parse_boundary(boundary_file="boundary.geojson", downloads=None):
 
     return shapely.geometry.Polygon(polygons_meld)
 
+
 def extract_point(feature):
     """
     Extract the coordinates from the given GeoJSON :feature: as a shapely.geometry.Point
     """
     coords = feature["geometry"]["coordinates"]
     return shapely.geometry.Point(coords[0], coords[1])
+
 
 def to_feature(shape, properties={}):
     """
@@ -66,6 +68,7 @@ def to_feature(shape, properties={}):
     # 'coordinates' in the top level is not valid geoJSON.
     feature.pop("coordinates")
     return feature
+
 
 def read_data_file(src, record_type):
     """

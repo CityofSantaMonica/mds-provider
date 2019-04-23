@@ -3,15 +3,18 @@ Load MDS Provider data into a database.
 """
 
 import json
-import mds
-from mds.db import sql
-from mds.fake.data import random_string
-from mds.json import read_data_file
 import os
 import pandas as pd
 from pathlib import Path
 import sqlalchemy
 import string
+
+from ..fake import random_string
+from ..json import read_data_file
+from ..providers import Provider
+from ..schema import STATUS_CHANGES, TRIPS
+
+from .sql import insert_status_changes_from, insert_trips_from
 
 
 def data_engine(uri=None, **kwargs):
@@ -147,10 +150,10 @@ class ProviderDataLoader():
 
             # now insert from the temp table to the actual table
             with self.engine.begin() as conn:
-                if record_type == mds.STATUS_CHANGES:
-                    query = sql.insert_status_changes_from(temp, table, on_conflict_update)
-                elif record_type == mds.TRIPS:
-                    query = sql.insert_trips_from(temp, table, on_conflict_update)
+                if record_type == STATUS_CHANGES:
+                    query = insert_status_changes_from(temp, table, on_conflict_update)
+                elif record_type == TRIPS:
+                    query = insert_trips_from(temp, table, on_conflict_update)
                 if query is not None:
                     conn.execute(query)
 
@@ -249,7 +252,7 @@ class ProviderDataLoader():
                 self.load_from_source(page, record_type, table, **kwargs)
 
         # source is a dict of Provider => list of data pages
-        elif isinstance(source, dict) and all(isinstance(k, mds.providers.Provider) for k in source.keys()):
+        elif isinstance(source, dict) and all(isinstance(k, Provider) for k in source.keys()):
             for _, pages in source.items():
                 self.load_from_source(pages, record_type, table, **kwargs)
 
@@ -297,11 +300,11 @@ class ProviderDataLoader():
 
         Optional keyword arguments:
 
-        :table: The name of the table to load data to, by default `mds.STATUS_CHANGES`.
+        :table: The name of the table to load data to, by default `status_changes`.
 
         Additional keyword arguments are passed-through to `load_from_df`.
         """
-        table = kwargs.pop("table", mds.STATUS_CHANGES)
+        table = kwargs.pop("table", STATUS_CHANGES)
         before_load = kwargs.pop("before_load", None)
 
         def __before_load(df):
@@ -313,7 +316,7 @@ class ProviderDataLoader():
             df = self._add_missing_cols(df, ["battery_pct", "associated_trip"])
             return before_load(df) if before_load else df
 
-        self.load_from_source(source, mds.STATUS_CHANGES, table, before_load=__before_load, **kwargs)
+        self.load_from_source(source, STATUS_CHANGES, table, before_load=__before_load, **kwargs)
 
     def load_trips(self, source, **kwargs):
         """
@@ -346,11 +349,11 @@ class ProviderDataLoader():
 
         Optional keyword arguments:
 
-        :table: The name of the table to load data to, by default `mds.TRIPS`.
+        :table: The name of the table to load data to, by default `trips`.
 
         Additional keyword arguments are passed-through to `load_from_df`.
         """
-        table = kwargs.pop("table", mds.TRIPS)
+        table = kwargs.pop("table", TRIPS)
         before_load = kwargs.pop("before_load", None)
 
         def __before_load(df):
@@ -362,4 +365,4 @@ class ProviderDataLoader():
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
             return before_load(df) if before_load else df
 
-        self.load_from_source(source, mds.TRIPS, table, before_load=__before_load, **kwargs)
+        self.load_from_source(source, TRIPS, table, before_load=__before_load, **kwargs)

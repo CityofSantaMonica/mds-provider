@@ -4,13 +4,14 @@ Validate instances of MDS Provider data against the schemas.
 
 import json
 import jsonschema
-import mds
-from mds.json import extract_point
-from mds.schema import ProviderSchema
 import os
 from pathlib import Path
 import requests
 import urllib
+
+from ..json import extract_point
+
+from .schema import ProviderSchema, STATUS_CHANGES, TRIPS
 
 
 class ProviderDataValidationError():
@@ -117,12 +118,12 @@ class ProviderDataValidationError():
             f"  'propulsion_type': {item['propulsion_type']},",
         ]
 
-        if self.schema_type == mds.STATUS_CHANGES:
+        if self.schema_type == STATUS_CHANGES:
             snippet.extend([
                 f"  'event_time': '{item['event_time']}',",
                 f"  'event_location': '{extract_point(item['event_location'])}'"
             ])
-        elif self.schema_type == mds.TRIPS:
+        elif self.schema_type == TRIPS:
             snippet.extend([
                 f"  'trip_id': '{item['trip_id']}',",
                 f"  'start_time': '{item['start_time']}',",
@@ -147,19 +148,18 @@ class ProviderDataValidator():
 
         If :schema_type: (and optionally :ref:) is given, obtain a new schema instance.
         """
-        self.schema = self._get_schema_instance(
-            provider_schema, schema_type, ref)
+        self.schema = self._get_schema_instance(provider_schema, schema_type, ref)
 
     def _get_schema_instance(self, provider_schema, schema_type, ref):
         """
         Helper to return a `ProviderSchema` instance from the possible arguments.
         """
         # determine the ProviderSchema instance to use
-        if isinstance(provider_schema, mds.schema.ProviderSchema):
+        if isinstance(provider_schema, ProviderSchema):
             return provider_schema
         elif schema_type:
-            return mds.schema.ProviderSchema(schema_type, ref=ref)
-        elif isinstance(self.schema, mds.schema.ProviderSchema):
+            return ProviderSchema(schema_type, ref=ref)
+        elif isinstance(self.schema, ProviderSchema):
             return self.schema
         else:
             return None
@@ -225,11 +225,11 @@ class ProviderDataValidator():
         """
         Create a Status Changes validator.
         """
-        return ProviderDataValidator(schema_type=mds.STATUS_CHANGES, ref=ref)
+        return ProviderDataValidator(schema_type=STATUS_CHANGES, ref=ref)
 
     @classmethod
     def Trips(cls, ref=None):
         """
         Create a Trips validator.
         """
-        return ProviderDataValidator(schema_type=mds.TRIPS, ref=ref)
+        return ProviderDataValidator(schema_type=TRIPS, ref=ref)

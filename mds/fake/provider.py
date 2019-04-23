@@ -4,14 +4,15 @@ Generating fake MDS Provider data.
 
 from datetime import datetime, timedelta
 import math
-import mds
-from mds.json import extract_point, to_feature
-from mds.fake.data import random_date_from, random_string, random_file_url
-from mds.fake.geometry import point_within, point_nearby
-from mds.schema import ProviderSchema
 import random
 import scipy.stats
 import uuid
+
+from ..json import extract_point, to_feature
+from ..schema import ProviderSchema
+
+from .data import *
+from .geometry import *
 
 
 BATTERY = "battery_pct"
@@ -552,4 +553,3 @@ class ProviderDataGenerator:
             payload["data"] = dict(trips=trips)
 
         return payload
-

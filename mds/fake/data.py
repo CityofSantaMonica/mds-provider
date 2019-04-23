@@ -20,6 +20,7 @@ def random_date_from(date,
     offset = random.uniform(min_s, max_s)
     return date + timedelta(seconds=offset)
 
+
 def random_string(k, chars=None):
     """
     Create a random string of length :k: from the set of uppercase letters
@@ -30,6 +31,7 @@ def random_string(k, chars=None):
     if chars is None:
         chars = string.ascii_uppercase + string.digits 
     return "".join(random.choices(chars, k=k))
+
 
 def random_file_url(company):
     url = "-".join(company.split())
