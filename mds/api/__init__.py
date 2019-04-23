@@ -1,6 +1,5 @@
 """
-Module implementing the MDS Provider API.
+Client implementation of the MDS Provider API.
 """
 
-from mds.api.client import ProviderClient
-
+from .client import ProviderClient

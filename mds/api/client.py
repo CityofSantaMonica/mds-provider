@@ -5,11 +5,11 @@ MDS Provider API client implementation.
 from datetime import datetime
 import time
 
-import mds
-from mds.api.auth import auth_types
-from mds.json import CustomJsonEncoder
-from mds.providers import Provider
-from mds.version import Version
+from ..providers import Provider
+from ..schema import STATUS_CHANGES, TRIPS
+from ..version import Version
+
+from .auth import auth_types
 
 
 class ProviderClient():
@@ -190,7 +190,7 @@ class ProviderClient():
             **kwargs
         }
 
-        return self._request(provider, mds.STATUS_CHANGES, params, paging, rate_limit)
+        return self._request(provider, STATUS_CHANGES, params, paging, rate_limit)
 
     def get_trips(self, **kwargs):
         """
@@ -227,4 +227,4 @@ class ProviderClient():
             **kwargs
         }
 
-        return self._request(provider, mds.TRIPS, params, paging, rate_limit)
+        return self._request(provider, TRIPS, params, paging, rate_limit)

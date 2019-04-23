@@ -2,9 +2,12 @@
 Work with the MDS Provider JSON Schemas.
 """
 
-import mds
-import mds.schema
 import requests
+
+
+STATUS_CHANGES = "status_changes"
+TRIPS = "trips"
+SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS ]
 
 
 class ProviderSchema():
@@ -23,10 +26,9 @@ class ProviderSchema():
             - commit hash (long or short)
             - git tag
         """
-        if schema_type not in mds.schema.SCHEMA_TYPES:
-            valid_types = ", ".join(mds.schema.SCHEMA_TYPES)
-            raise ValueError(
-                f"Invalid schema_type '{schema_type}'. Valid schema_types: {valid_types}")
+        if schema_type not in SCHEMA_TYPES:
+            valid_types = ", ".join(SCHEMA_TYPES)
+            raise ValueError(f"Invalid schema_type '{schema_type}'. Valid schema_types: {valid_types}")
 
         # acquire the schema
         self.schema_type = schema_type
@@ -53,7 +55,7 @@ class ProviderSchema():
         Get a dict of `event_type` => `[event_type_reason]` for this schema.
         """
         etr = {}
-        if self.schema_type is not mds.STATUS_CHANGES:
+        if self.schema_type is not STATUS_CHANGES:
             return etr
 
         item_schema = self.item_schema()
@@ -108,7 +110,7 @@ class ProviderSchema():
 
         Shortcut method for `ProviderSchemaValidator(self).validate(instance_source)`.
         """
-        from mds.schema.validation import ProviderDataValidator
+        from .validation import ProviderDataValidator
         validator = ProviderDataValidator(self)
         for error in validator.validate(instance_source):
             yield error
@@ -118,14 +120,14 @@ class ProviderSchema():
         """
         Acquires the Status Changes schema.
         """
-        return ProviderSchema(mds.STATUS_CHANGES, ref=ref)
+        return ProviderSchema(STATUS_CHANGES, ref=ref)
 
     @classmethod
     def Trips(cls, ref=DEFAULT_REF):
         """
         Acquires the Trips schema.
         """
-        return ProviderSchema(mds.TRIPS, ref=ref)
+        return ProviderSchema(TRIPS, ref=ref)
 
     @classmethod
     def url(cls, schema_type, ref=None):
