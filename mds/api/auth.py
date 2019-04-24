@@ -66,7 +66,6 @@ class OAuthClientCredentialsAuth(AuthorizationToken):
         ])
 
 
-
 class SpinClientCredentialsAuth(AuthorizationToken):
     """
     Represents an authenticated session via the Spin authentication scheme, documented at:
