@@ -8,12 +8,11 @@ from requests import Session
 
 class AuthorizationToken():
     """
-    Mixin implementing an Authorization token header of the type specified by
-    the provider.
+    Represents an authenticated session via an Authorization token header.
     """
-    def auth_token_session(self, provider):
+    def __init__(self, provider):
         """
-        Establishes a session with the `Authorization: :auth_type: :token:` header.
+        Establishes a session for the provider and includes the Authorization token header.
         """
         session = Session()
         session.headers.update({ "Authorization": f"{provider.auth_type} {provider.token}" })
@@ -22,14 +21,25 @@ class AuthorizationToken():
         if headers:
             session.headers.update(headers)
 
-        return session
+        self.session = session
+
+    @classmethod
+    def can_auth(cls, provider):
+        """
+        Returns True if this auth type can be used for the provider.
+        """
+        return all([
+            hasattr(provider, "auth_type"),
+            hasattr(provider, "token"),
+            not hasattr(provider, "token_url")
+        ])
 
 
 class OAuthClientCredentialsAuth(AuthorizationToken):
     """
-    Mixin implementing OAuth 2.0 client_credentials grant flow.
+    Represents an authenticated session via OAuth 2.0 client_credentials grant flow.
     """
-    def oauth_session(self, provider):
+    def __init__(self, provider):
         """
         Acquires a Bearer token before establishing a session with the provider.
         """
@@ -42,11 +52,23 @@ class OAuthClientCredentialsAuth(AuthorizationToken):
         r = requests.post(provider.token_url, data=payload)
         provider.token = r.json()["access_token"]
 
-        return self.auth_token_session(provider)
+        AuthorizationToken.__init__(self, provider)
+
+    @classmethod
+    def can_auth(cls, provider):
+        """
+        Returns True if this auth type can be used for the provider.
+        """
+        return all([
+            hasattr(provider, "client_id"),
+            hasattr(provider, "client_secret"),
+            hasattr(provider, "scope")
+        ])
+
 
 class SpinClientCredentialsAuth(AuthorizationToken):
     """
-    Mixin implementing the Spin authentication scheme, documented at:
+    Represents an authenticated session via the Spin authentication scheme, documented at:
     https://web.spin.pm/datafeeds
 
     Currently, your config needs:
@@ -55,9 +77,9 @@ class SpinClientCredentialsAuth(AuthorizationToken):
     :mds_api_url: (see https://github.com/CityOfLosAngeles/mobility-data-specification/pull/296)
     :token_url: (try https://web.spin.pm/api/v1/auth_tokens)
     """
-    def spin_auth_session(self, provider):
+    def __init__(self, provider):
         """
-        Acquires the bearer token for Spin
+        Acquires the bearer token for Spin before establishing a session.
         """
         payload = {
             "email": provider.email,
@@ -65,6 +87,28 @@ class SpinClientCredentialsAuth(AuthorizationToken):
             "grant_type": "api"
         }
         r = requests.post(provider.token_url, params=payload)
+        provider.token = r.json()["jwt"]
 
-        provider.token = r.json()['jwt']
-        return self.auth_token_session(provider)
+        AuthorizationToken.__init__(self, provider)
+
+    @classmethod
+    def can_auth(cls, provider):
+        """
+        Returns True if this auth type can be used for the provider.
+        """
+        return all([
+            provider.provider_name.lower() == "spin",
+            hasattr(provider, "email"),
+            hasattr(provider, "password"),
+            hasattr(provider, "token_url")
+        ])
+
+
+def auth_types():
+    """
+    Return a list of all supported authentication types.
+    """
+    types = AuthorizationToken.__subclasses__()
+    types.append(AuthorizationToken)
+
+    return types

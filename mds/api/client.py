@@ -6,11 +6,11 @@ from datetime import datetime
 import json
 import mds
 import time
-from mds.api.auth import OAuthClientCredentialsAuth, SpinClientCredentialsAuth
+from mds.api.auth import auth_types
 from mds.providers import get_registry, Provider
 
 
-class ProviderClient(SpinClientCredentialsAuth, OAuthClientCredentialsAuth):
+class ProviderClient():
     """
     Client for MDS Provider APIs
     """
@@ -29,17 +29,18 @@ class ProviderClient(SpinClientCredentialsAuth, OAuthClientCredentialsAuth):
 
     def _auth_session(self, provider):
         """
-        Internal helper to establish an authenticated session with the :provider:.
+        Internal helper to establish an authenticated session with the provider.
+
+        The provider is checked against all immediate subclasses of AuthorizationToken (and that class itself)
+        and the first supported implementation is used to establish the authenticated session.
+
+        Raises a ValueError if no supported implementation can be found.
         """
-        if hasattr(provider, "token") and not hasattr(provider, "token_url"):
-            # auth token defined by provider
-            return self.auth_token_session(provider)
-        elif provider.provider_name == 'Spin': 
-            # Spin auth flow
-            return self.spin_auth_session(provider)
-        else:
-            # OAuth 2.0 client_credentials grant flow
-            return self.oauth_session(provider)
+        for auth_type in auth_types():
+            if getattr(auth_type, "can_auth")(provider):
+                return auth_type(provider).session
+
+        raise ValueError(f"Couldn't find a supported auth type for {provider}")
 
     def _build_url(self, provider, endpoint):
         """
