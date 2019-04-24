@@ -11,7 +11,7 @@ setup(
     name="mds_provider",
     version=__version__,
     description="Tools for working with Mobility Data Specification Provider data",
-    long_description=open("README.md").read(),
+    long_description=Path("README.md").read_text(),
     url="https://github.com/CityofSantaMonica/mds-provider",
     author="City of Santa Monica and contributors",
     license="MIT",
@@ -19,8 +19,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "Fiona",
-        "jsonschema >= 3.0.0a2",
-        "numpy",
+        "jsonschema",
         "packaging",
         "pandas",
         "psycopg2-binary",
@@ -30,7 +29,6 @@ setup(
         "sqlalchemy"
     ],
     classifiers=[
-        "Environment :: Docker",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
