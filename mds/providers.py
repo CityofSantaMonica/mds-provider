@@ -45,7 +45,7 @@ class Provider():
         """
         Merge attributes from :config: into this Provider instance.
         """
-        _kwargs = { **vars(self), **config }
+        _kwargs = { **vars(self), **(config or {}) }
         Provider.__init__(self, **_kwargs)
         return self
 
