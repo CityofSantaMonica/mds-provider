@@ -35,8 +35,8 @@ class ProviderClient():
         self.config = kwargs.pop("config", None)
 
         if provider:
-            self.provider = provider if isinstance(provider, Provider) else Provider.Get(provider)
-            self.provider.configure(self.config)
+            provider = provider.provider_name if isinstance(provider, Provider) else provider
+            self.provider = Provider(provider, self.config)
 
         self.version = Version(kwargs.pop("version", Version.MDS()))
 
@@ -167,10 +167,10 @@ class ProviderClient():
         if provider is None:
             raise ValueError("Provider instance not found for this ProviderClient.")
 
-        if not isinstance(provider, Provider):
-            provider = Provider.Get(provider)
+        if isinstance(provider, Provider):
+            provider = provider.provider_name
 
-        return provider.configure(config)
+        return Provider(provider, config)
 
     def get_status_changes(self, provider=None, **kwargs):
         """
