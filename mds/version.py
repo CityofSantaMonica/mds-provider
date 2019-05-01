@@ -5,34 +5,34 @@ Work with MDS versions.
 from packaging.version import parse as _packaging_version_parse
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __mds_min_version__ = "0.3.0"
 
 
 class Version():
     """
-    Simple representation of a version string.
+    Represents a version in semver format `MAJOR.MINOR.PATCH`.
     """
+
     def __init__(self, version):
         """
-        Initialize a new `Version` representation of the given version string.
+        Initialize a new Version.
         """
-        if isinstance(version, str):
-            self.version_string = version
-        elif isinstance(version, Version):
-            self.version_string = version.version_string
-        else:
-            raise TypeError("version")
+        self.__version = self.__parse(version)
 
-        self.__version = self.__parse__(self.version_string)
-
-        self.tuple = self.__version.release
-
-    def __parse__(self, version):
+    @property
+    def tuple(self):
         """
-        Create the internal representation of a version string.
+        An int tuple representation of this Version.
         """
-        return _packaging_version_parse(version)
+        return self.__version.release
+
+    @property
+    def version_string(self):
+        """
+        A str representation of this Version.
+        """
+        return ".".join(map(str, self.tuple))
 
     def __eq__(self, version2):
         return self.__version.__eq__(version2.__version)
@@ -76,3 +76,15 @@ class Version():
         """
         version = version if isinstance(version, Version) else Version(version)
         return Version.MDS() <= version
+
+    @staticmethod
+    def __parse(version):
+        """
+        Create the internal representation of a version string.
+        """
+        if isinstance(version, Version):
+            version = version.version_string
+        elif not isinstance(version, str):
+            raise TypeError("version")
+
+        return _packaging_version_parse(version)
