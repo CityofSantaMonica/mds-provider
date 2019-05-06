@@ -161,7 +161,7 @@ class ProviderDataFiles():
 
         return Path(output_dir)
 
-    def get_dataframe(self, record_type=None, *sources, **kwargs):
+    def load_dataframe(self, record_type=None, *sources, **kwargs):
         """
         Reads the contents of MDS payload files into tuples of (Version, DataFrame).
 
@@ -201,7 +201,7 @@ class ProviderDataFiles():
 
         # obtain unmodified records
         kwargs["flatten"] = False
-        records = self.get_records(record_type, *sources, **kwargs)
+        records = self.load_records(record_type, *sources, **kwargs)
 
         if len(records) == 0:
             return records
@@ -217,7 +217,7 @@ class ProviderDataFiles():
         else:
             return [(r[0], pd.DataFrame.from_records(r[1])) for r in records]
 
-    def get_payloads(self, record_type=None, *sources, **kwargs):
+    def load_payloads(self, record_type=None, *sources, **kwargs):
         """
         Reads the contents of MDS payload files.
 
@@ -237,6 +237,8 @@ class ProviderDataFiles():
             file_searcher: callable, optional
                 A function that receives a list mixed file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
+
+            Additional keyword arguments are passed through to json.load().
 
         Returns:
             list
@@ -262,12 +264,14 @@ class ProviderDataFiles():
 
         record_type = record_type or self.record_type
 
+        flatten = kwargs.pop("flatten", True)
+
         # obtain a list of file Paths to read
-        file_searcher = kwargs.get("file_searcher", self.file_searcher)
+        file_searcher = kwargs.pop("file_searcher", self.file_searcher)
         files = file_searcher(sources)
 
         # load from each file into a composite list
-        data = [json.load(f.open()) for f in files]
+        data = [json.load(f.open(), **kwargs) for f in files]
 
         # filter out payloads with non-matching record_type
         if record_type:
@@ -280,7 +284,7 @@ class ProviderDataFiles():
             data = filtered
 
         # flatten any sublists
-        if kwargs.pop("flatten", True):
+        if flatten:
             flattened = []
             for payload in data:
                 if isinstance(payload, list):
@@ -291,7 +295,7 @@ class ProviderDataFiles():
 
         return data
 
-    def get_records(self, record_type=None, *sources, **kwargs):
+    def load_records(self, record_type=None, *sources, **kwargs):
         """
         Reads the contents of MDS payload files into tuples of (Version, list).
 
@@ -331,7 +335,7 @@ class ProviderDataFiles():
 
         # obtain unmodified payloads
         kwargs["flatten"] = False
-        payloads = self.get_payloads(record_type, *sources, **kwargs)
+        payloads = self.load_payloads(record_type, *sources, **kwargs)
 
         if len(payloads) < 1:
             return payloads

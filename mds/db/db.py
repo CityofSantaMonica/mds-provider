@@ -200,7 +200,7 @@ class ProviderDatabase():
                 self
         """
         # read the data file
-        _, df = ProviderDataFiles(src).get_dataframe(record_type)
+        _, df = ProviderDataFiles(src).load_dataframe(record_type)
         return self.load_from_df(df, record_type, table, **kwargs)
 
     def load_from_records(self, records, record_type, table, **kwargs):
