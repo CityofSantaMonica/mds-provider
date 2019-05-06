@@ -10,7 +10,15 @@ import shapely.ops
 
 def point_within(boundary):
     """
-    Create a random point somewhere within the Polygon :boundary:
+    Create a random point somewhere within the boundary.
+
+    Parameters:
+        boundary: shapely.geometry.Polygon
+            The geometry of the boundary.
+
+    Returns:
+        shapely.geometry.Point
+            A point inside the boundary.
     """
     # expand the bounds into the "4 corners"
     min_x, min_y, max_x, max_y = boundary.bounds
@@ -30,15 +38,30 @@ def point_within(boundary):
 
 def point_nearby(point, dist, bearing=None, boundary=None):
     """
-    Create a random point :dist: meters from :point:
+    Create a random point nearby another point.
 
-    Uses the Haversine formula to compute a new lat/lon given a distance and
-    bearing. Uses the provided bearing, or random if None.
-    If boundary is provided, the returned point will lie within that boundary.
-    If it proves difficult to find a point at the specified distance within the
-    boundary, the returned point may lie less than :dist: meters from :point:.
-
+    Uses the Haversine formula to compute a new lat/lon given a distance and bearing.  
     See: http://www.movable-type.co.uk/scripts/latlong.html#destPoint
+
+    Parameters:
+        point: shapely.geometry.Point
+            The reference point from which to generate a new point.
+
+        dist: numeric
+            A distance in meters away from the reference point to generate the new point.
+
+        bearing: numeric, optional
+            The bearing in radians away from the reference point to generate the new point. By default, random.
+
+        boundary: shapely.geometry.Polygon, optional
+            The returned point should lie within this boundary if possible.
+
+            If it proves difficult to find a point at the specified distance within the boundary,
+            the returned point may lie less than dist meters from point.
+
+    Returns:
+        shapely.geometry.Point
+            The newly calculated point.
     """
     if boundary is None:
         lat1 = math.radians(point.y)

@@ -1,8 +1,9 @@
 """
-Work with the official MDS Providers registry.
+Obtain Provider information from MDS Provider registry files.
 """
 
 import csv
+from pathlib import Path
 import requests
 from uuid import UUID
 
@@ -15,16 +16,40 @@ class Provider():
     """
     A simple model for an entry in the Provider registry.
     """
+
     __registry = {}
 
     def __init__(self, identifier=None, config={}, ref=DEFAULT_REF, path=None, **kwargs):
         """
         Initialize a new Provider instance.
 
-        Interrogate the Provider registry or a local file path, using the given identifier
-        (provider_id or provider_name).
+        Parameters:
+            identifier: str, UUID, optional
+                A provider_id or provider_name to look for in the registry.
 
-        Optionally pass a configuration dict to merge with the Provider instance.
+            config: dict, optional
+                Attributes to merge with this Provider instance.
+
+            ref: str, Version
+                The reference (git commit, branch, tag, or version) at which to query the registry.
+
+            path: str, Path, optional
+                A path to a local registry file.
+
+            provider_name: str, optional
+                The name of the provider from the registry.
+
+            provider_id: str, UUID
+                The unique identifier for the provider from the registry.
+
+            url: str
+                The provider's website url from the registry.
+
+            mds_api_url: str
+                The provider's base API url from the registry.
+
+            gbfs_api_url: str
+                The provider's GBFS API url from the registry.
         """
         # parsing a Provider record
         if not identifier:
@@ -71,18 +96,23 @@ class Provider():
         """
         Parse a Provider registry file into a list of Provider instances.
 
-        By default, download the official registry from GitHub `master`.
+        Parameters:
+            ref: str, Version
+                The reference (git commit, branch, tag, or version) at which to query the registry.
+                By default, download from GitHub master.
 
-        Optionally download from the specified :ref:, which could be any of:
-            - git branch name
-            - commit hash (long or short)
-            - git tag
+            path: str, Path, optional
+                A path to a local registry file to skip the GitHub download.
 
-        Or use the :path: kwarg to skip the download and parse a local registry file.
+        Return
+            list
+                A list of Provider instances from the registry.
         """
-        def __get():
+        def __get(ref, path):
             if path:
-                with open(path, "r") as f:
+                if not isinstance(path, Path):
+                    path = Path(path)
+                with path.open("r") as f:
                     return cls.__parse_csv(f.readlines())
             else:
                 url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
@@ -93,7 +123,7 @@ class Provider():
         # get/cache this registry reference
         key = (ref, path)
         if key not in cls.__registry:
-            cls.__registry[key] = __get()
+            cls.__registry[key] = __get(*key)
 
         return cls.__registry[key]
 
