@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 __version__ = re.search(
     r"__version__ = ['\"]([^'\"]*)['\"]",
-    Path("mds", "version.py").read_text()
+    Path("mds", "versions.py").read_text()
     ).group(1)
 
 setup(
