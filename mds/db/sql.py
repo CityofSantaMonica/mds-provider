@@ -1,16 +1,20 @@
 """
-SQL scripts for MDS Provider database CRUD.
+Generate SQL for MDS Provider database CRUD.
 """
 
-from ..schema import STATUS_CHANGES, TRIPS
+from ..schemas import STATUS_CHANGES, TRIPS
 
 
 def on_conflict_statement(on_conflict_update=None):
     """
-    Generate an appropriate ON CONFLICT... statement.
+    Generate an appropriate "ON CONFLICT..." statement.
 
-    :on_conflict_update: a tuple of (condition, actions) used to generate a statement like
-    ON CONFLICT :condition: DO UPDATE SET :actions:
+    Parameters:
+        on_conflict_update: tuple (condition: str, actions: list), optional
+            Generate a statement like "ON CONFLICT condition DO UPDATE SET actions"
+
+    Returns:
+        str
     """
     if on_conflict_update:
         condition, actions = on_conflict_update
@@ -25,7 +29,20 @@ def on_conflict_statement(on_conflict_update=None):
 
 def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, on_conflict_update=None):
     """
-    Generate an INSERT INTO statement from :source_table: to the Status Changes table.
+    Generate an "INSERT INTO... SELECT...FROM" statement for status_changes.
+
+    Parameters:
+        source_table: str
+            The name of the table to SELECT FROM.
+
+        dest_table: str, optional
+            The name of the table to INSERT INTO, by default status_changes.
+
+        on_conflict_update: tuple, optional
+            See on_conflict_statement()
+
+    Returns:
+        str
     """
     on_conflict = on_conflict_statement(on_conflict_update)
 
@@ -66,7 +83,20 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, on_confl
 
 def insert_trips_from(source_table, dest_table=TRIPS, on_conflict_update=None):
     """
-    Generate an INSERT INTO statement from :source_table: to the Trips table.
+    Generate an "INSERT INTO... SELECT...FROM" statement for trips.
+
+    Parameters:
+        source_table: str
+            The name of the table to SELECT FROM.
+
+        dest_table: str, optional
+            The name of the table to INSERT INTO, by default trips.
+
+        on_conflict_update: tuple, optional
+            See on_conflict_statement()
+
+    Returns:
+        str
     """
     on_conflict = on_conflict_statement(on_conflict_update)
 

@@ -1,5 +1,5 @@
 """
-Work with MDS Provider data.
+Work with MDS Provider database backends.
 """
 
-from .load import data_engine, ProviderDataLoader
+from .db import data_engine, ProviderDatabase
