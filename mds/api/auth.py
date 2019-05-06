@@ -9,6 +9,17 @@ from requests import Session
 class AuthorizationToken():
     """
     Represents an authenticated session via an Authorization token header.
+
+    To implement a new token-based auth type, create a subclass of AuthorizationToken and implement:
+
+        __init__(self, provider)
+            Initialize self.session.
+
+        @classmethod
+        can_auth(cls, provider): bool
+            return True if the auth type can be used on the provider.
+
+    See OAuthClientCredentialsAuth for an example implementation.
     """
     def __init__(self, provider):
         """
