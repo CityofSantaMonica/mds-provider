@@ -3,7 +3,8 @@ Tools for working with Mobility Data Specification Provider data.
 """
 
 from .api import ProviderClient
-from .db import data_engine, ProviderDataLoader
-from .schema import ProviderDataValidator, STATUS_CHANGES, TRIPS
+from .db import data_engine, ProviderDatabase
+from .files import ProviderDataFiles
+from .schemas import ProviderDataValidator, STATUS_CHANGES, TRIPS
 from .providers import Provider
-from .version import Version
+from .versions import Version
