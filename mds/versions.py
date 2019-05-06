@@ -17,6 +17,10 @@ class Version():
     def __init__(self, version):
         """
         Initialize a new Version.
+
+        Parameters:
+            version: str
+                The semver-formatted version string, e.g. "MAJOR.MINOR.PATCH"
         """
         self.__version = self.__parse(version)
 
