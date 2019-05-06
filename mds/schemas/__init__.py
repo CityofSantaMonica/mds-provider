@@ -2,5 +2,5 @@
 Work with the MDS Provider JSON Schemas.
 """
 
-from .schema import ProviderSchema, STATUS_CHANGES, TRIPS
+from .schema import ProviderSchema, STATUS_CHANGES, TRIPS, SCHEMA_TYPES
 from .validation import ProviderDataValidator

@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 import urllib
 
-from ..json import extract_point
+from ..geometry import extract_point
 
 from .schema import ProviderSchema, STATUS_CHANGES, TRIPS
 
@@ -21,11 +21,17 @@ class ProviderDataValidationError():
 
     def __init__(self, validation_error, instance, provider_schema):
         """
-        Initialize a new validation error instance with:
-
-            - :validation_error:, the original jsonschema.exceptions.ValidationError
-            - :instance:, the MDS Provider data object under validation
-            - :provider_schema:, the `ProviderSchema` instance used as the basis for validation
+        Initialize a new validation error instance.
+        
+        Parameters:
+            validation_error: jsonschema.exceptions.ValidationError
+                The error raised by validation.
+                
+            instance: dict
+                The MDS Provider data object under validation.
+                
+            provider_schema: ProviderSchema
+                The schema instance used as the basis for validation.
         """
         self.instance = validation_error.instance
         self.message = validation_error.message
@@ -142,17 +148,23 @@ class ProviderDataValidator():
 
     def __init__(self, provider_schema=None, schema_type=None, ref=None):
         """
-        Initialize a new `ProviderSchemaValidator`.
-
-        :provider_schema: is an optional `ProviderSchema` instance to use for later validation.
-
-        If :schema_type: (and optionally :ref:) is given, obtain a new schema instance.
+        Initialize a new ProviderSchemaValidator.
+        
+        Parameters:
+            provider_schema: ProviderSchema, optional
+                A schema instance to use for later validation.
+                
+            schema_type: str, optional
+                The type of schema to validate, e.g. "status_changes" or "trips"
+                
+            ref: str, Version, optional
+                The reference (git commit, branch, tag, or version) at which to reference the schema.
         """
         self.schema = self._get_schema_instance(provider_schema, schema_type, ref)
 
     def _get_schema_instance(self, provider_schema, schema_type, ref):
         """
-        Helper to return a `ProviderSchema` instance from the possible arguments.
+        Helper to return a ProviderSchema instance from the possible arguments.
         """
         # determine the ProviderSchema instance to use
         if isinstance(provider_schema, ProviderSchema):
@@ -166,29 +178,38 @@ class ProviderDataValidator():
 
     def _get_validator(self, schema):
         """
-        Helper to return a jsonschema.IValidator instance for the given JSON :schema: object.
+        Helper to return a jsonschema.IValidator instance for the given JSON schema object.
         """
         return jsonschema.Draft6Validator(schema)
 
     def validate(self, instance_source, provider_schema=None, schema_type=None, ref=None):
         """
-        Validate the given :instance_source:, which can be any of:
-            - JSON text (e.g. str)
-            - JSON object (e.g. dict)
-            - path to a local file of JSON text
-            - URL to a remote file of JSON text
-
-        If :provider_schema: is given (a `ProviderSchema` instance), then validate against it.
-
-        If :schema_type: (and optionally :ref:) is given, obtain a new schema instance and validate against it.
-
-        Otherwise use the schema that this validator was initialized with.
-
-        Yields a list of `ProviderDataValidationError`.
+        Validate MDS Provider data against a schema.
+        
+        Parameters:
+            instance_source: str, dict, Path
+                The aource of data to validate, any of:
+                    - JSON text
+                    - JSON object
+                    - path to a local file of JSON text
+                    - URL to a remote file of JSON text
+            
+            provider_schema: ProviderSchema, optional
+                Schema instance against which to validate.
+                
+            schema_type: str, optional
+                The type of schema to validate, e.g. "status_changes" or "trips"
+                
+            ref: str, Version, optional
+                The reference (git commit, branch, tag, or version) at which to reference the schema.
+        
+        Returns:
+            iterator
+                Zero or more ProviderDataValidationError instances.
         """
         def __isurl(check):
             """
-            Return True if :check: is a valid URL, False otherwise.
+            Return True if check is a valid URL.
             """
             parts = urllib.parse.urlparse(check)
             return parts.scheme and parts.netloc
@@ -206,14 +227,14 @@ class ProviderDataValidator():
         elif isinstance(instance_source, dict):
             instance = instance_source
         else:
-            raise TypeError("Unrecognized :instance_source: format. Recognized formats: file path/URL, JSON string, dict")
+            raise TypeError(f"Unrecognized instance_source type: {type(instance_source)}.")
 
         schema = self._get_schema_instance(provider_schema, schema_type, ref)
         if schema is None:
-            raise ValueError(
-                "Pass a valid ProviderSchema instance or a schema_type and ref to use for validation.")
+            raise ValueError("Could not obtain a schema for validation.")
 
-        # schema is a ProviderSchema instance, schema.schema is the JSON Schema (dict) associated with it
+        # schema is a ProviderSchema instance
+        # schema.schema is the JSON Schema (dict) associated with it
         v = self._get_validator(schema.schema)
 
         # do validation, converting and yielding errors
