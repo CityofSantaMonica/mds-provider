@@ -5,10 +5,10 @@ MDS Provider API client implementation.
 from datetime import datetime
 import time
 
-from ..json import CustomJsonEncoder
+from ..encoding import MdsJsonEncoder
 from ..providers import Provider
-from ..schema import STATUS_CHANGES, TRIPS
-from ..version import Version
+from ..schemas import STATUS_CHANGES, TRIPS
+from ..versions import Version
 
 from .auth import auth_types
 
@@ -21,17 +21,17 @@ class ProviderClient():
         """
         Initialize a new ProviderClient object.
 
-        Supported positional args:
+        Parameters:
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier that this client uses by default.
 
-        :provider: a Provider instance or identifier that this client uses by default.
+            config: dict, optional
+                Attributes to merge with the Provider instance.
 
-        Supported keyword args:
-
-        :config: A dict of attributes to merge with the Provider instance.
-
-        :version: the MDS version to target, e.g. `MAJOR.MINOR.PATCH`. Can be str or `Version` instance.
+            version: str, Version
+                The MDS version to target, e.g. `MAJOR.MINOR.PATCH`.
         """
-        self.encoder = CustomJsonEncoder(date_format="unix")
+        self.encoder = MdsJsonEncoder(date_format="unix")
         self.config = kwargs.pop("config", None)
 
         if provider:
@@ -176,25 +176,32 @@ class ProviderClient():
         """
         Request status changes, returning a list of non-empty payloads.
 
-        Supported positional args:
+        Parameters:
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier to issue this request to.
+                By default issue the request to this client's Provider instance.
 
-        :provider: Provider instance or identifier to issue this request to.
-                   By default issue the request to this client's Provider instance.
+            config: dict, optional
+                Attributes to merge with the Provider instance.
 
-        Supported keyword args:
+            start_time: datetime, int, optional
+                Filters for status changes where event_time occurs at or after the given time.
+                Should be a datetime or int UNIX milliseconds.
 
-        :config: A dict of attributes to merge with the Provider instance.
+            end_time: datetime, int, optional
+                Filters for status changes where event_time occurs before the given time.
+                Should be a datetime or int UNIX milliseconds.
 
-        :start_time: Filters for status changes where event_time occurs at or after the given time
-                     Should be a datetime object or int UNIX milliseconds
+            paging: bool, optional
+                True (default) to follow paging and request all available data.
+                False to request only the first page.
 
-        :end_time: Filters for status changes where event_time occurs before the given time
-                   Should be a datetime object or int UNIX milliseconds
+            rate_limit: int, optional
+                Number of seconds of delay to insert between paging requests.
 
-        :paging: True (default) to follow paging and request all available data.
-                 False to request only the first page.
-
-        :rate_limit: Number of seconds of delay to insert between paging requests.
+        Returns:
+            list
+                The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, config)
@@ -214,29 +221,38 @@ class ProviderClient():
         """
         Request trips, returning a list of non-empty payloads.
 
-        Supported positional args:
+        Parameters:
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier to issue this request to.
+                By default issue the request to this client's Provider instance.
 
-        :provider: Provider to issue this request to.
-                   By default issue the request to this client's Provider instance.
+            config: dict, optional
+                Attributes to merge with the Provider instance.
 
-        Supported keyword args:
+            device_id: str, UUID, optional
+                Filters for trips taken by the given device.
 
-        :config: A dict of attributes to merge with the Provider instance.
+            vehicle_id: str, optional
+                Filters for trips taken by the given vehicle.
 
-        :device_id: Filters for trips taken by the given device.
+            min_end_time: datetime, int, optional
+                Filters for trips where end_time occurs at or after the given time.
+                Should be a datetime or int UNIX milliseconds.
 
-        :vehicle_id: Filters for trips taken by the given vehicle.
+            max_end_time: datetime, int, optional
+                Filters for trips where end_time occurs before the given time.
+                Should be a datetime or int UNIX milliseconds.
 
-        :min_end_time: Filters for trips where end_time occurs at or after the given time.
-                       Should be a datetime object or int UNIX milliseconds
+            paging: bool, optional
+                True (default) to follow paging and request all available data.
+                False to request only the first page.
 
-        :max_end_time: Filters for trips where end_time occurs before the given time.
-                       Should be a datetime object or int UNIX milliseconds
+            rate_limit: int, optional
+                Number of seconds of delay to insert between paging requests.
 
-        :paging: True (default) to follow paging and request all available data.
-                 False to request only the first page.
-
-        :rate_limit: Number of seconds of delay to insert between paging requests.
+        Returns:
+            list
+                The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, config)
