@@ -123,7 +123,7 @@ class ProviderDatabase():
             table: str
                 The name of the database table to insert this data into.
 
-            before_load: callable, optional
+            before_load: callable(df=DataFrame): DataFrame, optional
                 Callback executed on the incoming DataFrame. Should return the final DataFrame for
                 loading.
 
@@ -317,7 +317,7 @@ class ProviderDatabase():
             table: str, optional
                 The name of the table to load data to, by default status_changes.
 
-            before_load: callable, optional
+            before_load: callable(df=DataFrame): DataFrame, optional
                 Callback executed on the incoming DataFrame. Should return the final DataFrame for
                 loading.
 
@@ -357,7 +357,7 @@ class ProviderDatabase():
             table: str, optional
                 The name of the table to load data to, by default trips.
 
-            before_load: callable, optional
+            before_load: callable(df=DataFrame): DataFrame, optional
                 Callback executed on the incoming DataFrame. Should return the final DataFrame for
                 loading.
 
