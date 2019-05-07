@@ -119,8 +119,7 @@ class ProviderDataGenerator:
                 (i.e. start_service and end_service events at the same location with no trips).
 
         Returns:
-            tuple
-                (status_changes: list, trips: list)
+            tuple (status_changes: list, trips: list)
         """
         day_status_changes, day_trips = [], []
         start_time = date.replace(hour=hour_open)
@@ -198,13 +197,12 @@ class ProviderDataGenerator:
                 A measure of how inactive the fleet is during this hour
 
         Returns:
-            tuple
-                (devices remaining active: list,
-                active device event times: list,
-                active device event locations: list,
-                devices removed: list,
-                status_changes: list,
-                trips starting: list)
+            tuple (active_devices: list,
+                   active_device_event_times: list,
+                   active_device_event_locations: list,
+                   removed_devices: list,
+                   status_changes: list,
+                   trips: list)
         """
         active, removed, changes, trips = [], [], [], []
 
@@ -376,8 +374,7 @@ class ProviderDataGenerator:
                 The average speed of the device in meters/second.
 
         Returns:
-            tuple
-                (status_changes: list, trip: dict)
+            tuple (status_changes: list, trip: dict)
         """
         if (event_time is None) and (reference_time is not None):
             event_time = random_date_from(reference_time, min_td=min_td, max_td=max_td)
