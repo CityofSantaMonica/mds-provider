@@ -29,12 +29,13 @@ class ProviderDataFiles():
                 One or more paths to (directories containing) MDS payload (JSON) files to read by default.
                 Directories are expanded such that all corresponding files within are read.
 
-            file_namer: callable, optional
-                A function that receives the the record_type, the payload being written,
-                and the full list of payloads, and returns the str file name for for the file.
+            file_name: str, callable(record_type=str, payloads=list, extension=str, [payload=dict]): str, optional
+                A str name for the file; or a function receiving record_type, list of payloads,
+                file extension, and optionally a single payload being written, and returns the str
+                name for the file.
 
-            file_searcher: callable, optional
-                A function that receives a list mixed file/directory Path objects, and returns the
+            ls: callable(sources=list): list, optional
+                A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
         """
         self.record_type = None
@@ -48,8 +49,13 @@ class ProviderDataFiles():
 
         self.sources.extend([Path(s) if not isinstance(s, Path) else s for s in sources])
 
-        self.file_namer = kwargs.get("file_namer", self.__file_namer)
-        self.file_searcher = kwargs.get("file_searcher", self.__file_searcher)
+        file_name = kwargs.get("file_name", self.__file_name)
+        if isinstance(file_name, str):
+            self.file_name = lambda **kwargs: file_name
+        else:
+            self.file_name = file_name
+
+        self.ls = kwargs.get("ls", self.__ls)
 
     def __default_dir(self):
         dirs = list(filter(lambda path: path.is_dir(), self.sources))
@@ -78,9 +84,10 @@ class ProviderDataFiles():
                 If this instance was initialized with a single directory source, use that by default.
                 Otherwise, use the current directory by default.
 
-            file_namer: callable, optional
-                A function that receives the the record_type, the payload being written,
-                and the full list of payloads, and returns the str file name for the file.
+            file_name: str, callable(record_type=str, payloads=list, extension=str, [payload=dict]): str, optional
+                A str name for the file; or a function receiving record_type, list of payloads,
+                file extension, and optionally a single payload being written, and returns the str
+                name for the file.
 
             single_file: bool, optional
                 True (default) to write the payloads to a single file using the appropriate data structure.
@@ -129,15 +136,21 @@ class ProviderDataFiles():
         if len(sources) == 0:
             return None
 
-        output_dir = kwargs.pop("output_dir", self.__default_dir())
-        file_namer = kwargs.pop("file_namer", self.file_namer)
+        output_dir = Path(kwargs.pop("output_dir", self.__default_dir()))
         single_file = kwargs.pop("single_file", True)
 
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        file_name = kwargs.pop("file_name", self.file_name)
+        if isinstance(file_name, str):
+            orig_file_name = file_name
+            file_name = lambda **kwargs: orig_file_name
+
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         if single_file:
             # generate a file name for the list of payloads
-            path = Path(output_dir, file_namer(record_type, sources[0], sources, ".json"))
+            fname = file_name(record_type=record_type, payloads=sources, extension=".json")
+            print(fname)
+            path = Path(output_dir, fname)
             # dump the single payload or a list of payloads
             with path.open("w") as fp:
                 if dict_source and len(sources) == 1:
@@ -146,9 +159,11 @@ class ProviderDataFiles():
                     json.dump(sources, fp, **kwargs)
             return path
 
+        # multi-file
         for payload in sources:
             # generate a file name for this payload
-            path = Path(output_dir, file_namer(record_type, payload, sources, ".json"))
+            fname = file_name(record_type=record_type, payloads=sources, extension=".json", payload=payload)
+            path = Path(output_dir, fname)
             if sources.index(payload) > 0 and path.exists():
                 # increment the file number
                 n = str(sources.index(payload))
@@ -159,7 +174,7 @@ class ProviderDataFiles():
             with path.open("w") as fp:
                 json.dump(payload, fp, **kwargs)
 
-        return Path(output_dir)
+        return output_dir
 
     def load_dataframe(self, record_type=None, *sources, **kwargs):
         """
@@ -177,12 +192,12 @@ class ProviderDataFiles():
                 True (default) to flatten the final result from all sources into a single tuple.
                 False to keep each result separate.
 
-            file_searcher: callable, optional
-                A function that receives a list mixed file/directory Path objects, and returns the
+            ls: callable(sources=list): list, optional
+                A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
 
         Returns:
-            tuple
+            tuple (Version, DataFrame)
                 With flatten=True, a (Version, DataFrame) tuple.
 
             list
@@ -234,8 +249,8 @@ class ProviderDataFiles():
                 True (default) to flatten the final result from all sources into a list of dicts.
                 False to keep each result as-is from the source.
 
-            file_searcher: callable, optional
-                A function that receives a list mixed file/directory Path objects, and returns the
+            ls: callable(sources=list): list, optional
+                A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
 
             Additional keyword arguments are passed through to json.load().
@@ -267,8 +282,8 @@ class ProviderDataFiles():
         flatten = kwargs.pop("flatten", True)
 
         # obtain a list of file Paths to read
-        file_searcher = kwargs.pop("file_searcher", self.file_searcher)
-        files = file_searcher(sources)
+        ls = kwargs.pop("ls", self.ls)
+        files = ls(sources)
 
         # load from each file into a composite list
         data = [json.load(f.open(), **kwargs) for f in files]
@@ -310,12 +325,12 @@ class ProviderDataFiles():
                 True (default) to flatten the final result from all sources into a single list.
                 False to keep each result separate.
 
-            file_searcher: callable, optional
-                A function that receives a list mixed file/directory Path objects, and returns the
+            ls: callable(sources=list): list, optional
+                A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
 
         Returns:
-            tuple
+            tuple (Version, list)
                 With flatten=True, a (Version, list) tuple.
 
             list
@@ -364,10 +379,15 @@ class ProviderDataFiles():
             return [(Version(r[0]), r[1]) for r in results]
 
     @staticmethod
-    def __file_namer(record_type, payload, payloads, extension):
+    def __file_name(**kwargs):
         """
         Generate a filename from the given parameters.
         """
+        record_type = kwargs.get("record_type", None)
+        payloads = kwargs.get("payloads", [])
+        extension = kwargs.get("extension", ".json")
+        payload = kwargs.get("payload", None)
+
         # is there a single record_type in these payloads that we should use?
         record_types = set([list(p["data"].keys())[0] for p in payloads])
         if record_type is None and len(record_types) == 1:
@@ -375,11 +395,11 @@ class ProviderDataFiles():
 
         # no record_type specified, generate filename from payload hash
         if record_type is None:
-            data = json.dumps(payload).encode()
+            data = json.dumps(payload or payloads).encode()
             shadigest = hashlib.sha256(data).hexdigest()
             return f"{shadigest[0:7]}{extension}"
 
-        # find the min/max times from the data
+        # find time boundaries from the data
         time_key = "event_time" if record_type == STATUS_CHANGES else "start_time"
         times = [int(d[time_key]) for p in payloads for d in p["data"][record_type]]
         try:
@@ -391,7 +411,7 @@ class ProviderDataFiles():
 
         # clip to hour of day, offset if they are the same
         start = datetime(start.year, start.month, start.day, start.hour)
-        end =   datetime(end.year, end.month, end.day, end.hour)
+        end = datetime(end.year, end.month, end.day, end.hour)
         if start == end:
             end = end + timedelta(hours=1)
 
@@ -401,15 +421,16 @@ class ProviderDataFiles():
         return f"{'_'.join(providers)}_{record_type}_{start.strftime(fmt)}_{end.strftime(fmt)}{extension}"
 
     @staticmethod
-    def __file_searcher(sources):
+    def __ls(sources):
         """
         Create a list of file Paths from a mix of file/directory sources.
         """
         # separate into files and directories
-        files = [f for f in sources if f.is_file() and f.suffix.lower() == ".json"]
-        dirs = [d for d in sources if d.is_dir()]
+        files = [f for f in sources if f.is_file() and f.exists() and f.suffix.lower() == ".json"]
+        dirs = [d for d in sources if d.is_dir() and d.exists()]
 
         # expand into directories
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
+        # filter non-existant files
         return files
