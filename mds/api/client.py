@@ -8,7 +8,7 @@ import time
 from ..encoding import MdsJsonEncoder
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
-from ..versions import Version
+from ..versions import UnsupportedVersionError, Version
 
 from .auth import auth_types
 
@@ -28,27 +28,27 @@ class ProviderClient():
             config: dict, optional
                 Attributes to merge with the Provider instance.
 
-            version: str, Version
-                The MDS version to target, e.g. `MAJOR.MINOR.PATCH`.
+            version: str, Version, optional
+                The MDS version to target.
         """
-        self.encoder = MdsJsonEncoder(date_format="unix")
         self.config = kwargs.pop("config", None)
 
         if provider:
             provider = provider.provider_name if isinstance(provider, Provider) else provider
             self.provider = Provider(provider, self.config)
 
-        self.version = Version(kwargs.pop("version", Version.MDS()))
+        self.version = Version(kwargs.pop("version", Version.mds_lower()))
 
-        if not Version.Supported(self.version):
-            raise ValueError(f"MDS version {self.version} is not supported by the current version of this library.")
+        if not self.version.supported:
+            raise UnsupportedVersionError(self.version)
+
+        self.encoder = MdsJsonEncoder(date_format="unix", version=self.version)
 
     def _media_type_version_header(self):
         """
         The custom MDS media-type and version header, using this client's version
         """
-        version = f"{self.version.tuple[0]}.{self.version.tuple[1]}"
-        return f"application/vnd.mds.provider+json;version={version}"
+        return f"application/vnd.mds.provider+json;version={self.version.header}"
 
     def _session(self, provider):
         """
