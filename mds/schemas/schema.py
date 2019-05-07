@@ -117,14 +117,14 @@ class ProviderSchema():
             yield error
 
     @classmethod
-    def StatusChanges(cls, ref=DEFAULT_REF):
+    def status_changes(cls, ref=DEFAULT_REF):
         """
         Acquires the Status Changes schema.
         """
         return ProviderSchema(STATUS_CHANGES, ref=ref)
 
     @classmethod
-    def Trips(cls, ref=DEFAULT_REF):
+    def trips(cls, ref=DEFAULT_REF):
         """
         Acquires the Trips schema.
         """

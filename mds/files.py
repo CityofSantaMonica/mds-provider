@@ -49,19 +49,19 @@ class ProviderDataFiles():
 
         self.sources.extend([Path(s) if not isinstance(s, Path) else s for s in sources])
 
-        file_name = kwargs.get("file_name", self.__file_name)
+        file_name = kwargs.get("file_name", self._file_name)
         if isinstance(file_name, str):
             self.file_name = lambda **kwargs: file_name
         else:
             self.file_name = file_name
 
-        self.ls = kwargs.get("ls", self.__ls)
+        self.ls = kwargs.get("ls", self._ls)
 
-    def __default_dir(self):
+    def _default_dir(self):
         dirs = list(filter(lambda path: path.is_dir(), self.sources))
         return dirs[0] if len(dirs) == 1 else Path(".")
 
-    def __record_type_or_raise(self, record_type):
+    def _record_type_or_raise(self, record_type):
         record_type = record_type or self.record_type
 
         if not record_type:
@@ -136,7 +136,7 @@ class ProviderDataFiles():
         if len(sources) == 0:
             return None
 
-        output_dir = Path(kwargs.pop("output_dir", self.__default_dir()))
+        output_dir = Path(kwargs.pop("output_dir", self._default_dir()))
         single_file = kwargs.pop("single_file", True)
 
         file_name = kwargs.pop("file_name", self.file_name)
@@ -211,7 +211,7 @@ class ProviderDataFiles():
             ValueError
                 When flatten=True and a version mismatch is found amongst the data.
         """
-        record_type = self.__record_type_or_raise(record_type)
+        record_type = self._record_type_or_raise(record_type)
         flatten = kwargs.pop("flatten", True)
 
         # obtain unmodified records
@@ -344,7 +344,7 @@ class ProviderDataFiles():
             ValueError
                 When flatten=True and a version mismatch is found amongst the data.
         """
-        record_type = self.__record_type_or_raise(record_type)
+        record_type = self._record_type_or_raise(record_type)
 
         flatten = kwargs.pop("flatten", True)
 
@@ -379,7 +379,7 @@ class ProviderDataFiles():
             return [(Version(r[0]), r[1]) for r in results]
 
     @staticmethod
-    def __file_name(**kwargs):
+    def _file_name(**kwargs):
         """
         Generate a filename from the given parameters.
         """
@@ -421,7 +421,7 @@ class ProviderDataFiles():
         return f"{'_'.join(providers)}_{record_type}_{start.strftime(fmt)}_{end.strftime(fmt)}{extension}"
 
     @staticmethod
-    def __ls(sources):
+    def _ls(sources):
         """
         Create a list of file Paths from a mix of file/directory sources.
         """

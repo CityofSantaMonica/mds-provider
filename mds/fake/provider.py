@@ -8,9 +8,8 @@ import random
 import scipy.stats
 import uuid
 
-from ..schemas import ProviderSchema, STATUS_CHANGES, TRIPS
-
 from ..geometry import extract_point, to_feature
+from ..schemas import ProviderSchema, STATUS_CHANGES, TRIPS
 
 from .geometry import *
 from .util import *
