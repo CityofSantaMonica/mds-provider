@@ -17,7 +17,7 @@ class Provider():
     A simple model for an entry in the Provider registry.
     """
 
-    __registry = {}
+    _registry = {}
 
     def __init__(self, identifier=None, config={}, ref=DEFAULT_REF, path=None, **kwargs):
         """
@@ -58,9 +58,9 @@ class Provider():
             provider_id = kwargs.pop("provider_id", None)
             self.provider_id = provider_id if isinstance(provider_id, UUID) else UUID(provider_id)
 
-            self.url = self.__clean_url(kwargs.pop("url", None))
-            self.mds_api_url = self.__clean_url(kwargs.pop("mds_api_url", None))
-            self.gbfs_api_url = self.__clean_url(kwargs.pop("gbfs_api_url", None))
+            self.url = self._clean_url(kwargs.pop("url", None))
+            self.mds_api_url = self._clean_url(kwargs.pop("mds_api_url", None))
+            self.gbfs_api_url = self._clean_url(kwargs.pop("gbfs_api_url", None))
 
             for k,v in kwargs.items():
                 setattr(self, k, v)
@@ -89,7 +89,7 @@ class Provider():
                 raise ValueError(f"Can not obtain a single provider matching '{identifier}'.")
 
     def __repr__(self):
-        return f"<Provider provider_name:'{self.provider_name}' provider_id:'{str(self.provider_id)}' mds_api_url:'{self.mds_api_url}'>"
+        return f"<mds.providers.Provider ('{self.provider_name}', '{str(self.provider_id)}', '{self.mds_api_url}')>"
 
     @classmethod
     def get_registry(cls, ref=DEFAULT_REF, path=None):
@@ -108,27 +108,27 @@ class Provider():
             list
                 A list of Provider instances from the registry.
         """
-        def __get(ref, path):
+        def _get(ref, path):
             if path:
                 if not isinstance(path, Path):
                     path = Path(path)
                 with path.open("r") as f:
-                    return cls.__parse_csv(f.readlines())
+                    return cls._parse_csv(f.readlines())
             else:
                 url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
                 with requests.get(url, stream=True) as r:
                     lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
-                    return cls.__parse_csv(lines)
+                    return cls._parse_csv(lines)
 
         # get/cache this registry reference
         key = (ref, path)
-        if key not in cls.__registry:
-            cls.__registry[key] = __get(*key)
+        if key not in cls._registry:
+            cls._registry[key] = _get(*key)
 
-        return cls.__registry[key]
+        return cls._registry[key]
 
     @staticmethod
-    def __clean_url(url):
+    def _clean_url(url):
         """
         Helper to return a normalized URL
         """
@@ -139,7 +139,7 @@ class Provider():
             return None
 
     @staticmethod
-    def __parse_csv(lines):
+    def _parse_csv(lines):
         """
         Helper parses CSV lines into a list of Provider instances.
         """

@@ -84,7 +84,7 @@ class ProviderClient():
 
         Returns a list of payloads, with length corresponding to the number of non-empty responses.
         """
-        def __describe(res):
+        def _describe(res):
             """
             Prints details about the given response.
             """
@@ -96,7 +96,7 @@ class ProviderClient():
             if r.status_code is not 200:
                 print(r.text)
 
-        def __has_data(page):
+        def _has_data(page):
             """
             Checks if this page has a "data" property with a non-empty payload.
             """
@@ -105,7 +105,7 @@ class ProviderClient():
             print(f"Got payload with {len(payload)} {endpoint}")
             return len(payload) > 0
 
-        def __next_url(page):
+        def _next_url(page):
             """
             Gets the next URL or None from page.
             """
@@ -121,29 +121,29 @@ class ProviderClient():
         r = session.get(url, params=params)
 
         if r.status_code is not 200:
-            __describe(r)
+            _describe(r)
             return results
 
         this_page = r.json()
 
-        if __has_data(this_page):
+        if _has_data(this_page):
             results.append(this_page)
 
         # get subsequent pages of data
-        next_url = __next_url(this_page)
+        next_url = _next_url(this_page)
         while paging and next_url:
             r = session.get(next_url)
 
             if r.status_code is not 200:
-                __describe(r)
+                _describe(r)
                 break
 
             this_page = r.json()
 
-            if __has_data(this_page):
+            if _has_data(this_page):
                 results.append(this_page)
 
-            next_url = __next_url(this_page)
+            next_url = _next_url(this_page)
 
             if next_url and rate_limit:
                 time.sleep(rate_limit)

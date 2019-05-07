@@ -207,7 +207,7 @@ class ProviderDataValidator():
             iterator
                 Zero or more ProviderDataValidationError instances.
         """
-        def __isurl(check):
+        def _isurl(check):
             """
             Return True if check is a valid URL.
             """
@@ -218,7 +218,7 @@ class ProviderDataValidator():
         if isinstance(instance_source, str):
             if os.path.isfile(instance_source):
                 instance = json.load(open(instance_source, "r"))
-            elif __isurl(instance_source):
+            elif _isurl(instance_source):
                 instance = requests.get(instance_source).json()
             else:
                 instance = json.loads(instance_source)
@@ -242,14 +242,14 @@ class ProviderDataValidator():
             yield ProviderDataValidationError(error, instance, schema)
 
     @classmethod
-    def StatusChanges(cls, ref=None):
+    def status_changes(cls, ref=None):
         """
         Create a Status Changes validator.
         """
         return ProviderDataValidator(schema_type=STATUS_CHANGES, ref=ref)
 
     @classmethod
-    def Trips(cls, ref=None):
+    def trips(cls, ref=None):
         """
         Create a Trips validator.
         """
