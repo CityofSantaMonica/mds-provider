@@ -10,6 +10,7 @@ import pandas as pd
 from pathlib import Path
 
 from .schemas import STATUS_CHANGES, SCHEMA_TYPES, TRIPS
+from .versions import UnexpectedVersionError
 
 
 class ProviderDataFiles():
@@ -196,6 +197,13 @@ class ProviderDataFiles():
                 A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
 
+        Raises:
+            UnexpectedVersionError
+                When flatten=True and a version mismatch is found amongst the data.
+
+            ValueError
+                When neither record_type or instance.record_type is specified.
+
         Returns:
             tuple (Version, DataFrame)
                 With flatten=True, a (Version, DataFrame) tuple.
@@ -203,13 +211,6 @@ class ProviderDataFiles():
             list
                 With flatten=False, a list of (Version, DataFrame) tuples with length equal to the
                 total number of payloads across all sources.
-
-        Raises:
-            ValueError
-                When neither record_type or instance.record_type is provided.
-
-            ValueError
-                When flatten=True and a version mismatch is found amongst the data.
         """
         record_type = self._record_type_or_raise(record_type)
         flatten = kwargs.pop("flatten", True)
@@ -221,16 +222,16 @@ class ProviderDataFiles():
         if len(records) == 0:
             return records
 
-        version = records[0][0]
+        version = Version(records[0][0])
 
         if flatten:
-            if not all([v == version for v,_ in records]):
-                raise ValueError("Found version mismatch, cannot flatten results.")
+            if not all([Version(v) == version for v,_ in records]):
+                raise UnexpectedVersionError([Version(v) != version for v,_ in records][0], version)
             # take the first version, combine each record list
             version, records = results[0][0], [item for _,data in records for item in data]
-            return (version, pd.DataFrame.from_records(records))
+            return (Version(version), pd.DataFrame.from_records(records))
         else:
-            return [(r[0], pd.DataFrame.from_records(r[1])) for r in records]
+            return [(Version(r[0]), pd.DataFrame.from_records(r[1])) for r in records]
 
     def load_payloads(self, record_type=None, *sources, **kwargs):
         """
@@ -255,14 +256,14 @@ class ProviderDataFiles():
 
             Additional keyword arguments are passed through to json.load().
 
+        Raises:
+            IndexError
+                When no sources have been specified.
+
         Returns:
             list
                 With a single file source, or multiple sources and flatten=True, a list of Provider payload dicts.
                 With multiple sources and flatten=False, a list of the raw contents of each file.
-
-        Raises:
-            IndexError
-                When no sources have been specified.
         """
         sources = [Path(s) if not isinstance(s, Path) else s for s in sources]
 
@@ -329,6 +330,13 @@ class ProviderDataFiles():
                 A function that receives a mixed list of file/directory Path objects, and returns the
                 complete list of file Path objects to be read.
 
+        Raises:
+            UnexpectedVersionError
+                When flatten=True and a version mismatch is found amongst the data.
+
+            ValueError
+                When neither record_type or instance.record_type is provided.
+
         Returns:
             tuple (Version, list)
                 With flatten=True, a (Version, list) tuple.
@@ -336,13 +344,6 @@ class ProviderDataFiles():
             list
                 With flatten=False, a list of (Version, list) tuples with length equal to the 
                 total number of payloads across all sources.
-
-        Raises:
-            ValueError
-                When neither record_type or instance.record_type is provided.
-
-            ValueError
-                When flatten=True and a version mismatch is found amongst the data.
         """
         record_type = self._record_type_or_raise(record_type)
 
@@ -357,9 +358,9 @@ class ProviderDataFiles():
 
         # get the version from the initial payload
         if isinstance(payloads[0], list):
-            version = payloads[0][0]["version"]
+            version = Version(payloads[0][0]["version"])
         else:
-            version = payloads[0]["version"]
+            version = Version(payloads[0]["version"])
 
         # collect versions and data from each payload
         results = []
@@ -370,11 +371,11 @@ class ProviderDataFiles():
                 results.append((page["version"], page["data"][record_type]))
 
         if flatten:
-            if not all([v == version for v,_ in results]):
-                raise ValueError("Found version mismatch, cannot flatten results.")
+            if not all([Version(v) == version for v,_ in results]):
+                raise UnexpectedVersionError([Version(v) != version for v,_ in results][0], version)
             # take the first version, and unroll each item from each page
-            version, records = results[0][0], [item for version,data in results for item in data]
-            return (Version(version), records)
+            version, records = results[0][0], [item for _,data in results for item in data]
+            return Version(version), records
         else:
             return [(Version(r[0]), r[1]) for r in results]
 
