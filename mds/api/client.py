@@ -17,6 +17,7 @@ class ProviderClient():
     """
     Client for MDS Provider APIs.
     """
+
     def __init__(self, provider=None, **kwargs):
         """
         Initialize a new ProviderClient object.
@@ -29,7 +30,7 @@ class ProviderClient():
                 Attributes to merge with the Provider instance.
 
             version: str, Version, optional
-                The MDS version to target.
+                The MDS version to target. By default, use Version.mds_lower().
         """
         self.config = kwargs.pop("config", None)
 
@@ -42,7 +43,20 @@ class ProviderClient():
         if not self.version.supported:
             raise UnsupportedVersionError(self.version)
 
-        self.encoder = MdsJsonEncoder(date_format="unix", version=self.version)
+        self.encoder = ProviderClient._encoder_or_raise(self.version)
+
+    def _date_format(self, dt, version=None):
+        """
+        Format datetimes for querystrings.
+        """
+        if dt is None:
+            return None
+        if not isinstance(dt, datetime):
+            return int(dt)
+        if version is None or version == self.version:
+            return self.encoder.encode(dt)
+        else:
+            return ProviderClient._encoder_or_raise(version).encode(dt)
 
     def _media_type_version_header(self):
         """
@@ -50,113 +64,37 @@ class ProviderClient():
         """
         return f"application/vnd.mds.provider+json;version={self.version.header}"
 
-    def _session(self, provider):
+    def _prepare_get(self, provider, record_type, **kwargs):
         """
-        Internal helper to establish an authenticated session with the provider.
+        Prepare parameters for a GET request to an endpoint of the given type.
 
-        The provider is checked against all immediate subclasses of AuthorizationToken (and that class itself)
-        and the first supported implementation is used to establish the authenticated session.
-
-        Raises a ValueError if no supported implementation can be found.
+        Returns:
+            tuple (provider: Provider, record_type: str, params: dict, paging: bool, rate_limit: int)
         """
-        for auth_type in auth_types():
-            if getattr(auth_type, "can_auth")(provider):
-                return auth_type(provider).session
+        config = kwargs.pop("config", self.config)
+        provider = self._provider_or_raise(provider, config)
+        paging = bool(kwargs.pop("paging", True))
+        rate_limit = int(kwargs.pop("rate_limit", 0))
+        version = Version(kwargs.pop("version", self.version))
 
-        raise ValueError(f"Couldn't find a supported auth type for {provider}")
+        # select the appropriate time range parameter names from record_type and version
+        if record_type == STATUS_CHANGES or version < Version("0.3.0"):
+            lo_key, hi_key = "start_time", "end_time"
+        else:
+            lo_key, hi_key = "min_end_time", "max_end_time"
 
-    def _build_url(self, provider, endpoint):
-        """
-        Build an API url for a provider's endpoint.
-        """
-        url = provider.mds_api_url
+        # get each of the time parameters, formatted for this version
+        times = {}
+        times[lo_key] = self._date_format(kwargs.pop(lo_key, None), version=version)
+        times[hi_key] = self._date_format(kwargs.pop(hi_key, None), version=version)
 
-        if hasattr(provider, "mds_api_suffix"):
-            url += "/" + getattr(provider, "mds_api_suffix").rstrip("/")
+        # combine with leftover kwargs
+        params = {
+            **times,
+            **kwargs
+        }
 
-        url += "/" + endpoint
-
-        return url
-
-    def _request(self, provider, endpoint, params, paging, rate_limit):
-        """
-        Send one or more requests to a provider's endpoint.
-
-        Returns a list of payloads, with length corresponding to the number of non-empty responses.
-        """
-        def _describe(res):
-            """
-            Prints details about the given response.
-            """
-            print(f"Requested {res.url}, Response Code: {res.status_code}")
-            print("Response Headers:")
-            for k,v in res.headers.items():
-                print(f"{k}: {v}")
-
-            if r.status_code is not 200:
-                print(r.text)
-
-        def _has_data(page):
-            """
-            Checks if this page has a "data" property with a non-empty payload.
-            """
-            data = page["data"] if "data" in page else {"__payload__": []}
-            payload = data[endpoint] if endpoint in data else []
-            print(f"Got payload with {len(payload)} {endpoint}")
-            return len(payload) > 0
-
-        def _next_url(page):
-            """
-            Gets the next URL or None from page.
-            """
-            return page["links"].get("next") if "links" in page else None
-
-        url = self._build_url(provider, endpoint)
-        results = []
-
-        # establish an authenticated session
-        session = self._session(provider)
-
-        # get the initial page of data
-        r = session.get(url, params=params)
-
-        if r.status_code is not 200:
-            _describe(r)
-            return results
-
-        this_page = r.json()
-
-        if _has_data(this_page):
-            results.append(this_page)
-
-        # get subsequent pages of data
-        next_url = _next_url(this_page)
-        while paging and next_url:
-            r = session.get(next_url)
-
-            if r.status_code is not 200:
-                _describe(r)
-                break
-
-            this_page = r.json()
-
-            if _has_data(this_page):
-                results.append(this_page)
-
-            next_url = _next_url(this_page)
-
-            if next_url and rate_limit:
-                time.sleep(rate_limit)
-
-        return results
-
-    def _date_format(self, dt):
-        """
-        Format datetimes for querystrings.
-        """
-        if dt is None:
-            return None
-        return self.encoder.encode(dt) if isinstance(dt, datetime) else int(dt)
+        return provider, record_type, params, paging, rate_limit
 
     def _provider_or_raise(self, provider, config):
         """
@@ -199,23 +137,16 @@ class ProviderClient():
             rate_limit: int, optional
                 Number of seconds of delay to insert between paging requests.
 
+            version: str, Version, optional
+                The MDS version to target.
+
+            Additional keyword arguments are passed through as API request parameters.
         Returns:
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
-        config = kwargs.pop("config", self.config)
-        provider = self._provider_or_raise(provider, config)
-        start_time = self._date_format(kwargs.pop("start_time", None))
-        end_time = self._date_format(kwargs.pop("end_time", None))
-        paging = bool(kwargs.pop("paging", True))
-        rate_limit = int(kwargs.pop("rate_limit", 0))
-
-        params = {
-            **dict(start_time=start_time, end_time=end_time),
-            **kwargs
-        }
-
-        return self._request(provider, STATUS_CHANGES, params, paging, rate_limit)
+        prepared = self._prepare_get(provider, STATUS_CHANGES, **kwargs)
+        return ProviderClient._request(*prepared)
 
     def get_trips(self, provider=None, **kwargs):
         """
@@ -235,13 +166,25 @@ class ProviderClient():
             vehicle_id: str, optional
                 Filters for trips taken by the given vehicle.
 
+            start_time: datetime, float, optional
+                Filters for trips where start_time occurs at or after the given time.
+                Should be a datetime or float UNIX seconds.
+                Only valid when version < Version("0.3.0").
+
+            end_time: datetime, float, optional
+                Filters for trips where end_time occurs at or before the given time.
+                Should be a datetime or float UNIX seconds.
+                Only valid when version < Version("0.3.0").
+
             min_end_time: datetime, int, optional
                 Filters for trips where end_time occurs at or after the given time.
                 Should be a datetime or int UNIX milliseconds.
+                Only valid when version >= Version("0.3.0").
 
             max_end_time: datetime, int, optional
                 Filters for trips where end_time occurs before the given time.
                 Should be a datetime or int UNIX milliseconds.
+                Only valid when version >= Version("0.3.0").
 
             paging: bool, optional
                 True (default) to follow paging and request all available data.
@@ -250,20 +193,130 @@ class ProviderClient():
             rate_limit: int, optional
                 Number of seconds of delay to insert between paging requests.
 
+            version: str, Version, optional
+                The MDS version to target.
+
+            Additional keyword arguments are passed through as API request parameters.
+
         Returns:
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
-        config = kwargs.pop("config", self.config)
-        provider = self._provider_or_raise(provider, config)
-        min_end_time = self._date_format(kwargs.pop("min_end_time", None))
-        max_end_time = self._date_format(kwargs.pop("max_end_time", None))
-        paging = bool(kwargs.pop("paging", True))
-        rate_limit = int(kwargs.pop("rate_limit", 0))
+        prepared = self._prepare_get(provider, TRIPS, **kwargs)
+        return ProviderClient._request(*prepared)
 
-        params = { 
-            **dict(device_id=device_id, vehicle_id=vehicle_id, min_end_time=min_end_time, max_end_time=max_end_time),
-            **kwargs
-        }
+    @staticmethod
+    def _build_url(provider, record_type):
+        """
+        Build an API url for a provider's endpoint.
+        """
+        url = [provider.mds_api_url]
 
-        return self._request(provider, TRIPS, params, paging, rate_limit)
+        if hasattr(provider, "mds_api_suffix"):
+            url.append(getattr(provider, "mds_api_suffix").rstrip("/"))
+
+        url.append(record_type)
+
+        return "/".join(url)
+
+    @staticmethod
+    def _describe(res):
+        """
+        Prints details about the given response.
+        """
+        print(f"Requested {res.url}, Response Code: {res.status_code}")
+        print("Response Headers:")
+        for k,v in res.headers.items():
+            print(f"{k}: {v}")
+
+        if r.status_code is not 200:
+            print(r.text)
+
+    @staticmethod
+    def _encoder_or_raise(version):
+        """
+        Gets a MdsJsonEncoder instance for the given version, if supported.
+        """
+        if version.supported:
+            return MdsJsonEncoder(date_format="unix", version=version)
+        else:
+            raise UnsupportedVersionError(version)
+
+    @staticmethod
+    def _has_data(page, record_type):
+        """
+        Checks if this page has a "data" property with a non-empty payload.
+        """
+        data = page["data"] if "data" in page else {"__payload__": []}
+        payload = data[record_type] if record_type in data else []
+        print(f"Got payload with {len(payload)} {record_type}")
+        return len(payload) > 0
+
+    @staticmethod
+    def _next_url(page):
+        """
+        Gets the next URL or None from page.
+        """
+        return page["links"].get("next") if "links" in page else None
+
+    @staticmethod
+    def _request(provider, record_type, params, paging, rate_limit):
+        """
+        Send one or more requests to a provider's endpoint.
+
+        Returns a list of payloads, with length corresponding to the number of non-empty responses.
+        """
+        url = ProviderClient._build_url(provider, record_type)
+        results = []
+
+        # establish an authenticated session
+        session = ProviderClient._session(provider)
+
+        # get the initial page of data
+        r = session.get(url, params=params)
+
+        if r.status_code is not 200:
+            ProviderClient._describe(r)
+            return results
+
+        this_page = r.json()
+
+        if ProviderClient._has_data(this_page, record_type):
+            results.append(this_page)
+
+        # get subsequent pages of data
+        next_url = ProviderClient._next_url(this_page)
+        while paging and next_url:
+            r = session.get(next_url)
+
+            if r.status_code is not 200:
+                ProviderClient._describe(r)
+                break
+
+            this_page = r.json()
+
+            if ProviderClient._has_data(this_page, record_type):
+                results.append(this_page)
+
+            next_url = ProviderClient._next_url(this_page)
+
+            if next_url and rate_limit:
+                time.sleep(rate_limit)
+
+        return results
+
+    @staticmethod
+    def _session(provider):
+        """
+        Establish an authenticated session with the provider.
+
+        The provider is checked against all immediate subclasses of AuthorizationToken (and that class itself)
+        and the first supported implementation is used to establish the authenticated session.
+
+        Raises a ValueError if no supported implementation can be found.
+        """
+        for auth_type in auth_types():
+            if getattr(auth_type, "can_auth")(provider):
+                return auth_type(provider).session
+
+        raise ValueError(f"Couldn't find a supported auth type for {provider}")
