@@ -100,6 +100,13 @@ class Version():
         return Version.is_supported(self)
 
     @property
+    def unsupported(self):
+        """
+        True if this Version instance is not supported by the library version.
+        """
+        return not self.supported
+
+    @property
     def tuple(self):
         """
         An int tuple representation of this Version.
