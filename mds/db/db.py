@@ -13,6 +13,7 @@ from ..fake import random_string
 from ..files import ProviderDataFiles
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
+from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
 
 from .sql import insert_status_changes_from, insert_trips_from
 
@@ -105,16 +106,27 @@ class ProviderDatabase():
                     stage_first=3
 
                 stages to a random temp table with 26*26*26 possible naming choices.
+
+            version: str, Version, optional
+                The MDS version to target. By default, Version.mds_lower().
+
+        Raises:
+            UnsupportedVersionError
+                When an unsupported MDS version is specified.
         """
-        self.engine = kwargs.get("engine", data_engine(uri=uri, **kwargs))
-        self.stage_first = kwargs.get("stage_first", True)
+        self.version = Version(kwargs.pop("version", Version.mds_lower()))
+        if not self.version.supported:
+            raise UnsupportedVersionError(self.version)
+
+        self.stage_first = kwargs.pop("stage_first", True)
+        self.engine = kwargs.pop("engine", data_engine(uri=uri, **kwargs))
 
     def load_from_df(self, df, record_type, table, **kwargs):
         """
         Inserts MDS data from a DataFrame.
 
         Parameters:
-            df: pandas.DataFrame
+            df: DataFrame
                 Data of type record_type to insert.
 
             record_type: str
@@ -123,9 +135,9 @@ class ProviderDatabase():
             table: str
                 The name of the database table to insert this data into.
 
-            before_load: callable(df=DataFrame): DataFrame, optional
-                Callback executed on the incoming DataFrame. Should return the final DataFrame for
-                loading.
+            before_load: callable(df=DataFrame, version=Version): DataFrame, optional
+                Callback executed on the incoming DataFrame and Version.
+                Should return the final DataFrame for loading.
 
             stage_first: bool, int, optional
                 True (default) to stage data in a temp table before upserting to the final table.
@@ -140,20 +152,30 @@ class ProviderDatabase():
 
             on_conflict_update: tuple (condition: str, actions: list), optional
                 Generate an "ON CONFLICT condition DO UPDATE SET actions" statement.
-
                 Only applies when stage_first evaluates True.
 
+            version: str, Version, optional
+                The MDS version to target.
+
+        Raises:
+            UnsupportedVersionError
+                When an unsupported MDS version is specified.
+
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
+        version = Version(kwargs.get("version", self.version))
+        if not version.supported:
+            raise UnsupportedVersionError(version)
+
         before_load = kwargs.get("before_load", None)
         stage_first = kwargs.get("stage_first", self.stage_first)
         on_conflict_update = kwargs.get("on_conflict_update", None)
 
         # run any pre-processors to transform the df
         if before_load is not None:
-            new_df = before_load(df)
+            new_df = before_load(df, version)
             df = new_df if new_df is not None else df
 
         if not stage_first:
@@ -168,15 +190,13 @@ class ProviderDatabase():
             # now insert from the temp table to the actual table
             with self.engine.begin() as conn:
                 if record_type == STATUS_CHANGES:
-                    query = insert_status_changes_from(temp, table, on_conflict_update)
+                    query = insert_status_changes_from(temp, table, on_conflict_update=on_conflict_update, version=version)
                 elif record_type == TRIPS:
-                    query = insert_trips_from(temp, table, on_conflict_update)
+                    query = insert_trips_from(temp, table, on_conflict_update=on_conflict_update, version=version)
                 if query is not None:
                     conn.execute(query)
-
-                # Delete temp table since not using a real TEMPORARY
-                conn.execute(f"DROP TABLE {temp}")
-
+                    # delete temp table (not a true TEMPORARY table)
+                    conn.execute(f"DROP TABLE {temp}")
         return self
 
     def load_from_file(self, src, record_type, table, **kwargs):
@@ -193,14 +213,32 @@ class ProviderDatabase():
             table: str
                 The name of the table to load data to.
 
+            version: str, Version, optional
+                The MDS version to target.
+
             Additional keyword arguments are passed-through to load_from_df().
 
+        Raises:
+            UnexpectedVersionError
+                When data is parsed with a version different from what was expected.
+
+            UnsupportedVersionError
+                When an unsupported MDS version is specified.
+
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
+        version = Version(kwargs.get("version", self.version))
+        if not version.supported:
+            raise UnsupportedVersionError(version)
+
         # read the data file
-        _, df = ProviderDataFiles(src).load_dataframe(record_type)
+        _version, df = ProviderDataFiles(src).load_dataframe(record_type)
+
+        if _version != version:
+            raise UnexpectedVersionError(_version, version)
+
         return self.load_from_df(df, record_type, table, **kwargs)
 
     def load_from_records(self, records, record_type, table, **kwargs):
@@ -219,17 +257,17 @@ class ProviderDatabase():
 
             Additional keyword arguments are passed-through to load_from_df().
 
-        Raises
+        Raises:
+            TypeError
+                When records is not a list of dicts.
 
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
-        if isinstance(records, list):
-            if len(records) > 0:
-                df = pd.DataFrame.from_records(records)
-                self.load_from_df(df, record_type, table, **kwargs)
-
+        if isinstance(records, list) and len(records) > 0 and all([isinstance(d, dict) for d in records]):
+            df = pd.DataFrame.from_records(records)
+            self.load_from_df(df, record_type, table, **kwargs)
             return self
 
         raise TypeError(f"Unknown type for records: {type(records)}")
@@ -265,17 +303,30 @@ class ProviderDatabase():
             table: str
                 The name of the table to load data to.
 
+            version: str, Version, optional
+                The MDS version to target.
+
             Additional keyword arguments are passed-through to load_from_df().
 
         Raises:
             TypeError
                 When the type of source is not recognized.
 
+            UnexpectedVersionError
+                When data is parsed with a version different from what was expected.
+
+            UnsupportedVersionError
+                When an unsupported MDS version is specified.
+
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
-        def __valid_path(p):
+        version = Version(kwargs.get("version", self.version))
+        if not version.supported:
+            raise UnsupportedVersionError(version)
+
+        def _valid_path(p):
             """
             Check for a valid path reference
             """
@@ -283,7 +334,9 @@ class ProviderDatabase():
 
         # source is a single data page
         if isinstance(source, dict) and "data" in source and record_type in source["data"]:
-            records = source["data"][record_type]
+            _version, records = Version(source["version"]), source["data"][record_type]
+            if _version != version:
+                raise UnexpectedVersionError(_version, version)
             self.load_from_records(records, record_type, table, **kwargs)
 
         # source is a list of data pages
@@ -292,12 +345,12 @@ class ProviderDatabase():
                 self.load_from_source(page, record_type, table, **kwargs)
 
         # source is a list of file paths, load only the valid paths
-        elif isinstance(source, list) and any([__valid_path(p) for p in source]):
-            for path in [p for p in source if __valid_path(p)]:
+        elif isinstance(source, list) and any([_valid_path(p) for p in source]):
+            for path in [p for p in source if _valid_path(p)]:
                 self.load_from_source(path, record_type, table, **kwargs)
 
         # source is a single (valid) file path
-        elif __valid_path(source):
+        elif _valid_path(source):
             self.load_from_file(source, record_type, table, **kwargs)
 
         # source is something else we can't handle
@@ -317,34 +370,42 @@ class ProviderDatabase():
             table: str, optional
                 The name of the table to load data to, by default status_changes.
 
-            before_load: callable(df=DataFrame): DataFrame, optional
-                Callback executed on the incoming DataFrame. Should return the final DataFrame for
-                loading.
+            before_load: callable(df=DataFrame, version=Version): DataFrame, optional
+                Callback executed on the incoming DataFrame and Version.
+                Should return the final DataFrame for loading.
 
             drop_duplicates: list, optional
                 List of column names used to drop duplicate records before load.
 
+            version: str, Version, optional
+                The MDS version to target.
+
             Additional keyword arguments are passed-through to load_from_df().
 
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
+        version = Version(kwargs.get("version", self.version))
+        if not version.supported:
+            raise UnsupportedVersionError(version)
+
         table = kwargs.pop("table", STATUS_CHANGES)
-        before_load = kwargs.pop("before_load", lambda df: df)
+        before_load = kwargs.pop("before_load", lambda df,v: df)
         drop_duplicates = kwargs.pop("drop_duplicates", None)
 
-        def __before_load(df):
+        def _before_load(df,v):
             """
             Helper converts JSON cols and ensures optional cols exist
             """
-            if drop_duplicates:
-                df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+            if drop_duplicates: df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
             self._json_cols_tostring(df, ["event_location"])
-            df = self._add_missing_cols(df, ["battery_pct", "associated_trip"])
-            return before_load(df)
+            missing_cols = ["battery_pct"]
+            missing_cols.append("associated_trips" if version < Version("0.3.0") else "associated_trip")
+            df = self._add_missing_cols(df, missing_cols)
+            return before_load(df,v)
 
-        return self.load_from_source(source, STATUS_CHANGES, table, before_load=__before_load, **kwargs)
+        return self.load_from_source(source, STATUS_CHANGES, table, before_load=_before_load, **kwargs)
 
     def load_trips(self, source, **kwargs):
         """
@@ -357,35 +418,34 @@ class ProviderDatabase():
             table: str, optional
                 The name of the table to load data to, by default trips.
 
-            before_load: callable(df=DataFrame): DataFrame, optional
-                Callback executed on the incoming DataFrame. Should return the final DataFrame for
-                loading.
+            before_load: callable(df=DataFrame, version=Version): DataFrame, optional
+                Callback executed on the incoming DataFrame and Version.
+                Should return the final DataFrame for loading.
 
             drop_duplicates: list, optional
-                List of column names used to drop duplicate records before load. By default,
-                ["provider_id", "trip_id"]
+                List of column names used to drop duplicate records before load.
+                By default, ["provider_id", "trip_id"]
 
             Additional keyword arguments are passed-through to load_from_df().
 
         Returns:
-            mds.db.ProviderDataLoader
+            ProviderDataLoader
                 self
         """
         table = kwargs.pop("table", TRIPS)
-        before_load = kwargs.pop("before_load", lambda df: df)
+        before_load = kwargs.pop("before_load", lambda df,v: df)
         drop_duplicates = kwargs.pop("drop_duplicates", ["provider_id", "trip_id"])
 
-        def __before_load(df):
+        def _before_load(df,v):
             """
             Helper converts JSON cols and ensures optional cols exist
             """
-            if drop_duplicates:
-                df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+            if drop_duplicates: df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
             self._json_cols_tostring(df, ["route"])
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
-            return before_load(df)
+            return before_load(df,v)
 
-        return self.load_from_source(source, TRIPS, table, before_load=__before_load, **kwargs)
+        return self.load_from_source(source, TRIPS, table, before_load=_before_load, **kwargs)
 
     @staticmethod
     def _json_cols_tostring(df, cols):
