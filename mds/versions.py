@@ -11,6 +11,15 @@ __mds_lower_version__ = "0.2.0"
 __mds_upper_version__ = "0.4.0"
 
 
+class UnexpectedVersionError(ValueError):
+    """
+    Model an error for an unexpected MDS version.
+    """
+
+    def __init__(self, unexpected, expected):
+        super().__init__(f"MDS version {unexpected} was unexpected; expected {expected}.")
+
+
 class UnsupportedVersionError(ValueError):
     """
     Model an error for an unsupported MDS version.
