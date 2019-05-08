@@ -40,7 +40,7 @@ class ProviderClient():
 
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
 
-        if not self.version.supported:
+        if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
 
         self.encoder = ProviderClient._encoder_or_raise(self.version)

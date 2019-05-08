@@ -45,7 +45,7 @@ class MdsJsonEncoder(json.JSONEncoder):
         """
         if isinstance(obj, datetime):
             if self.date_format == "unix":
-                if not self.version.supported:
+                if self.version.unsupported:
                     raise UnsupportedVersionError(self.version)
                 elif self.version < Version("0.3.0"):
                     return obj.timestamp()

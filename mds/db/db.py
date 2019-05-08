@@ -115,7 +115,7 @@ class ProviderDatabase():
                 When an unsupported MDS version is specified.
         """
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        if not self.version.supported:
+        if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
 
         self.stage_first = kwargs.pop("stage_first", True)
@@ -166,7 +166,7 @@ class ProviderDatabase():
                 self
         """
         version = Version(kwargs.get("version", self.version))
-        if not version.supported:
+        if version.unsupported:
             raise UnsupportedVersionError(version)
 
         before_load = kwargs.get("before_load", None)
@@ -230,7 +230,7 @@ class ProviderDatabase():
                 self
         """
         version = Version(kwargs.get("version", self.version))
-        if not version.supported:
+        if version.unsupported:
             raise UnsupportedVersionError(version)
 
         # read the data file
@@ -323,7 +323,7 @@ class ProviderDatabase():
                 self
         """
         version = Version(kwargs.get("version", self.version))
-        if not version.supported:
+        if version.unsupported:
             raise UnsupportedVersionError(version)
 
         def _valid_path(p):
@@ -387,7 +387,7 @@ class ProviderDatabase():
                 self
         """
         version = Version(kwargs.get("version", self.version))
-        if not version.supported:
+        if version.unsupported:
             raise UnsupportedVersionError(version)
 
         table = kwargs.pop("table", STATUS_CHANGES)
