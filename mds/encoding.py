@@ -8,16 +8,17 @@ from shapely.geometry import Point, Polygon
 from uuid import UUID
 
 from .geometry import to_feature
+from .versions import UnsupportedVersionError, Version
 
 
 class MdsJsonEncoder(json.JSONEncoder):
     """
-    Json encoding for some special types:
+    Version-aware JSON encoder for MDS, handling additional datatypes:
 
-        - datetime to date_format or str
-        - Point/Polygon to GeoJSON Feature
-        - tuple to list
-        - UUID to str
+    * datetime to date_format or str
+    * Point/Polygon to GeoJSON Feature dict
+    * tuple to list
+    * UUID to str
     """
 
     def __init__(self, *args, **kwargs):
@@ -27,11 +28,15 @@ class MdsJsonEncoder(json.JSONEncoder):
         Parameters:
             date_format: str
                 Configure how dates are formatted using one of:
-                    - unix: format dates as integer milliseconds since Unix epoch (default)
-                    - iso8601: format dates as ISO 8601 strings
-                    - python format string: custom format
+                * unix: format dates as a numeric offset from Unix epoch (default, Version-aware)
+                * iso8601: format dates as ISO 8601 strings
+                * python format string: custom format
+
+            version: str, Version, optional
+                The MDS version to target.
         """
         self.date_format = kwargs.pop("date_format", "unix")
+        self.version = Version(kwargs.pop("version", Version.mds_lower()))
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
     def default(self, obj):
@@ -40,7 +45,12 @@ class MdsJsonEncoder(json.JSONEncoder):
         """
         if isinstance(obj, datetime):
             if self.date_format == "unix":
-                return int(round(obj.timestamp() * 1000))
+                if not self.version.supported:
+                    raise UnsupportedVersionError(self.version)
+                elif self.version < Version("0.3.0"):
+                    return obj.timestamp()
+                else:
+                    return int(round(obj.timestamp() * 1000))
             elif self.date_format == "iso8601":
                 return obj.isoformat()
             elif self.date_format is not None:
