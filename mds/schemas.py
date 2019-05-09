@@ -3,9 +3,11 @@ Work with the MDS Provider JSON Schemas.
 """
 
 import os
-import jsonschema
 
-from .geometry import extract_point
+import jsonschema
+import requests
+
+from mds import github, geometry
 from .versions import Version
 
 
@@ -18,9 +20,6 @@ class ProviderSchema():
     """
     Represents a MDS Provider JSON Schema.
     """
-
-    _SCHEMA_PATTERN = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/provider/{}.json"
-    DEFAULT_REF = "master"
 
     def __init__(self, schema_type, ref=None):
         """
@@ -46,22 +45,23 @@ class ProviderSchema():
         try:
             self.ref = Version(ref)
         except:
-            self.ref = ref or self.DEFAULT_REF
+            self.ref = ref or github.MDS_DEFAULT_REF
 
-        self.schema_url = self.url(schema_type, self.ref)
+        self.schema_url = github.schema_url(schema_type, self.ref)
 
         try:
             from .files import ProviderDataFiles
-            self.schema = ProviderDataFiles(self.schema_url).load_payloads()[0]
+            # load_payloads always returns a list, so take the first item from that list as the schema
+            self.schema = requests.get(self.schema_url).json()
         except:
             raise ValueError(f"Problem requesting schema from: {self.schema_url}")
 
         # override the $id for a non-standard ref
-        if self.ref is not self.DEFAULT_REF:
+        if self.ref is not github.MDS_DEFAULT_REF:
             self.schema["$id"] = self.schema_url
 
     def __repr__(self):
-        return f"<mds.schemas.ProviderSchema ('{self.schema_type}', '{self.schema_url}')>"
+        return f"<mds.schemas.ProviderSchema ('{self.ref}', '{self.schema_type}', '{self.schema_url}')>"
 
     def validate(self, instance_source):
         """
@@ -73,7 +73,7 @@ class ProviderSchema():
             instance_source: dict
                 An instance (e.g. parsed JSON object) to validate.
 
-        Returns:
+        Return:
             iterator
                 An iterator that yields validation errors.
         """
@@ -167,14 +167,6 @@ class ProviderSchema():
         """
         return ProviderSchema(TRIPS, ref)
 
-    @classmethod
-    def url(cls, schema_type, ref=None):
-        """
-        Helper to return a formatted schema URL given the :schema_type: and optional :ref:.
-        """
-        ref = ref or cls.DEFAULT_REF
-        return cls._SCHEMA_PATTERN.format(ref, schema_type)
-
 
 class ProviderDataValidationError():
     """
@@ -212,7 +204,7 @@ class ProviderDataValidationError():
         """
         Describe this error.
 
-        Returns:
+        Return:
             list
                 A list of error messages describing the error.
         """
@@ -284,7 +276,7 @@ class ProviderDataValidationError():
         if self.schema_type == STATUS_CHANGES:
             snippet.extend([
                 f"  'event_time': '{item['event_time']}',",
-                f"  'event_location': '{extract_point(item['event_location'])}'"
+                f"  'event_location': '{geometry.extract_point(item['event_location'])}'"
             ])
         elif self.schema_type == TRIPS:
             snippet.extend([
@@ -317,6 +309,9 @@ class ProviderDataValidator():
         """
         self.schema = self._get_schema_instance_or_raise(schema, ref)
 
+    def __repr__(self):
+        return f"<mds.schemas.ProviderDataValidator ('{self.schema.ref}', '{self.schema.schema_type}')>"
+
     def _get_schema_instance_or_raise(self, schema, ref):
         """
         Helper to return a ProviderSchema instance from the possible arguments.
@@ -330,9 +325,6 @@ class ProviderDataValidator():
             return self.schema
         else:
             raise ValueError("Could not obtain a schema for validation.")
-
-    def __repr__(self):
-        return f"<mds.schemas.ProviderDataValidator ('{self.schema.schema_type}', '{self.schema.ref}')>"
 
     def validate(self, instance_source, schema=None, ref=None):
         """
@@ -353,7 +345,7 @@ class ProviderDataValidator():
             ref: str, Version, optional
                 The reference (git commit, branch, tag, or version) at which to reference the schema.
 
-        Returns:
+        Return:
             iterator
                 Zero or more ProviderDataValidationError instances.
         """
