@@ -4,12 +4,11 @@ Obtain Provider information from MDS Provider registry files.
 
 import csv
 from pathlib import Path
-import requests
 from uuid import UUID
 
+import requests
 
-PROVIDER_REGISTRY = "https://raw.githubusercontent.com/CityOfLosAngeles/mobility-data-specification/{}/providers.csv"
-DEFAULT_REF = "master"
+from mds import github
 
 
 class Provider():
@@ -19,7 +18,7 @@ class Provider():
 
     _registry = {}
 
-    def __init__(self, identifier=None, config={}, ref=DEFAULT_REF, path=None, **kwargs):
+    def __init__(self, identifier=None, config={}, ref=github.MDS_DEFAULT_REF, path=None, **kwargs):
         """
         Initialize a new Provider instance.
 
@@ -50,6 +49,8 @@ class Provider():
 
             gbfs_api_url: str
                 The provider's GBFS API url from the registry.
+
+            Additional keyword parameters are set as attributes on the Provider instance.
         """
         # parsing a Provider record
         if not identifier:
@@ -61,6 +62,8 @@ class Provider():
             self.url = self._clean_url(kwargs.pop("url", None))
             self.mds_api_url = self._clean_url(kwargs.pop("mds_api_url", None))
             self.gbfs_api_url = self._clean_url(kwargs.pop("gbfs_api_url", None))
+            self.registry_ref = ref
+            self.registry_path = path
 
             for k,v in kwargs.items():
                 setattr(self, k, v)
@@ -89,10 +92,11 @@ class Provider():
                 raise ValueError(f"Can not obtain a single provider matching '{identifier}'.")
 
     def __repr__(self):
-        return f"<mds.providers.Provider ('{self.provider_name}', '{str(self.provider_id)}', '{self.mds_api_url}')>"
+        ref = self.registry_ref or self.registry_path
+        return f"<mds.providers.Provider ('{ref}', '{self.provider_name}', '{str(self.provider_id)}', '{self.mds_api_url}')>"
 
     @classmethod
-    def get_registry(cls, ref=DEFAULT_REF, path=None):
+    def get_registry(cls, ref=github.MDS_DEFAULT_REF, path=None):
         """
         Parse a Provider registry file into a list of Provider instances.
 
@@ -104,23 +108,21 @@ class Provider():
             path: str, Path, optional
                 A path to a local registry file to skip the GitHub download.
 
-        Return
+        Return:
             list
-                A list of Provider instances from the registry.
+                The list of Provider instances from the registry.
         """
-        def _get(ref, path):
-            if path:
-                if not isinstance(path, Path):
-                    path = Path(path)
-                with path.open("r") as f:
-                    return cls._parse_csv(f.readlines())
+        def _get(_ref, _path):
+            if _path:
+                _path = Path(_path)
+                with _path.open("r") as f:
+                    return cls._parse_csv(f.readlines(), ref=_ref, path=_path)
             else:
-                url = PROVIDER_REGISTRY.format(ref or DEFAULT_REF)
+                url = github.registry_url(_ref)
                 with requests.get(url, stream=True) as r:
                     lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
-                    return cls._parse_csv(lines)
+                    return cls._parse_csv(lines, ref=_ref, path=_path)
 
-        # get/cache this registry reference
         key = (ref, path)
         if key not in cls._registry:
             cls._registry[key] = _get(*key)
@@ -139,8 +141,8 @@ class Provider():
             return None
 
     @staticmethod
-    def _parse_csv(lines):
+    def _parse_csv(lines, **kwargs):
         """
         Helper parses CSV lines into a list of Provider instances.
         """
-        return [Provider(**record) for record in csv.DictReader(lines)]
+        return [Provider(**record, **kwargs) for record in csv.DictReader(lines)]
