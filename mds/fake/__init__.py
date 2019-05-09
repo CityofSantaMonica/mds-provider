@@ -2,6 +2,5 @@
 Generate fake MDS Provider data.
 """
 
-from .geometry import *
+from ..fake import geometry, util
 from .provider import ProviderDataGenerator
-from .util import *

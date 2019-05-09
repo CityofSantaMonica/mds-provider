@@ -2,14 +2,13 @@
 MDS Provider API client implementation. 
 """
 
-from datetime import datetime
 import time
+from datetime import datetime
 
 from ..encoding import MdsJsonEncoder
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
-
 from .auth import auth_types
 
 
@@ -45,6 +44,9 @@ class ProviderClient():
 
         self.encoder = ProviderClient._encoder_or_raise(self.version)
 
+    def __repr__(self):
+        return f"<mds.api.ProviderClient ('{self.version}', '{self.provider.provider_name}')>"
+
     def _date_format(self, dt, version=None):
         """
         Format datetimes for querystrings.
@@ -68,7 +70,7 @@ class ProviderClient():
         """
         Prepare parameters for a GET request to an endpoint of the given type.
 
-        Returns:
+        Return:
             tuple (provider: Provider, record_type: str, params: dict, paging: bool, rate_limit: int)
         """
         config = kwargs.pop("config", self.config)
@@ -141,7 +143,7 @@ class ProviderClient():
                 The MDS version to target.
 
             Additional keyword arguments are passed through as API request parameters.
-        Returns:
+        Return:
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
@@ -198,7 +200,7 @@ class ProviderClient():
 
             Additional keyword arguments are passed through as API request parameters.
 
-        Returns:
+        Return:
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """

@@ -3,7 +3,6 @@ Authentication module for MDS API calls.
 """
 
 import requests
-from requests import Session
 
 
 class AuthorizationToken():
@@ -25,7 +24,7 @@ class AuthorizationToken():
         """
         Establishes a session for the provider and includes the Authorization token header.
         """
-        session = Session()
+        session = requests.Session()
         session.headers.update({ "Authorization": f"{provider.auth_type} {provider.token}" })
 
         headers = getattr(provider, "headers", None)

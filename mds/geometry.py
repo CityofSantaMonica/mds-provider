@@ -2,9 +2,10 @@
 Helpers for GeoJSON-based geometry objects.
 """
 
-import fiona
 import json
 import os
+
+import fiona
 import requests
 import shapely.geometry
 import shapely.ops
@@ -21,7 +22,7 @@ def parse_boundary(boundary_file, **kwargs):
         output: str, optional
             If boundary_file is a URL, download and save the file to this directory.
 
-    Returns:
+    Return:
         shapely.geometry.Polygon
             A single unioned Polygon representing the (composite) boundary.
     """
@@ -51,7 +52,7 @@ def extract_point(feature):
         feature: dict-like
             GeoJSON structure with coordinate geometry.
 
-    Returns:
+    Return:
         shapely.geometry.Point
             The Point representation of the coordinate geometry.
     """
@@ -70,7 +71,7 @@ def to_feature(shape, properties={}):
         properties: dict, optional
             Entries for the Feature's properties collection.
 
-    Returns:
+    Return:
         dict
             The GeoJSON Feature object.
     """

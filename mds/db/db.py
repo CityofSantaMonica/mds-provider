@@ -4,18 +4,18 @@ Work with MDS Provider database backends.
 
 import json
 import os
-import pandas as pd
-from pathlib import Path
-import sqlalchemy
 import string
+from pathlib import Path
 
-from ..fake import random_string
+import pandas as pd
+import sqlalchemy
+
+from ..db import sql
+from ..fake import util
 from ..files import ProviderDataFiles
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
-
-from .sql import insert_status_changes_from, insert_trips_from
 
 
 def data_engine(uri=None, **kwargs):
@@ -48,7 +48,7 @@ def data_engine(uri=None, **kwargs):
         db: str, optional
             The name of the database to connect to.
 
-    Returns:
+    Return:
         sqlalchemy.engine.Engine
     """
     if uri is None and all(k in kwargs for k in ["user", "password", "host", "db"]):
@@ -121,6 +121,9 @@ class ProviderDatabase():
         self.stage_first = kwargs.pop("stage_first", True)
         self.engine = kwargs.pop("engine", data_engine(uri=uri, **kwargs))
 
+    def __repr__(self):
+        return f"<mds.db.ProviderDatabase ('{self.version}')>"
+
     def load_from_df(self, df, record_type, table, **kwargs):
         """
         Inserts MDS data from a DataFrame.
@@ -161,7 +164,7 @@ class ProviderDatabase():
             UnsupportedVersionError
                 When an unsupported MDS version is specified.
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """
@@ -184,15 +187,15 @@ class ProviderDatabase():
         else:
             # insert this DataFrame into a fresh temp table
             factor = stage_first if isinstance(stage_first, int) else 1
-            temp = f"{table}_tmp_{random_string(factor, chars=string.ascii_lowercase)}"
+            temp = f"{table}_tmp_{util.random_string(factor, chars=string.ascii_lowercase)}"
             df.to_sql(temp, self.engine, if_exists="replace", index=False)
 
             # now insert from the temp table to the actual table
             with self.engine.begin() as conn:
                 if record_type == STATUS_CHANGES:
-                    query = insert_status_changes_from(temp, table, on_conflict_update=on_conflict_update, version=version)
+                    query = sql.insert_status_changes_from(temp, table, on_conflict_update=on_conflict_update, version=version)
                 elif record_type == TRIPS:
-                    query = insert_trips_from(temp, table, on_conflict_update=on_conflict_update, version=version)
+                    query = sql.insert_trips_from(temp, table, on_conflict_update=on_conflict_update, version=version)
                 if query is not None:
                     conn.execute(query)
                     # delete temp table (not a true TEMPORARY table)
@@ -225,7 +228,7 @@ class ProviderDatabase():
             UnsupportedVersionError
                 When an unsupported MDS version is specified.
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """
@@ -261,7 +264,7 @@ class ProviderDatabase():
             TypeError
                 When records is not a list of dicts.
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """
@@ -318,7 +321,7 @@ class ProviderDatabase():
             UnsupportedVersionError
                 When an unsupported MDS version is specified.
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """
@@ -382,7 +385,7 @@ class ProviderDatabase():
 
             Additional keyword arguments are passed-through to load_from_df().
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """
@@ -428,7 +431,7 @@ class ProviderDatabase():
 
             Additional keyword arguments are passed-through to load_from_df().
 
-        Returns:
+        Return:
             ProviderDataLoader
                 self
         """

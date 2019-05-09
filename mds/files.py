@@ -2,16 +2,17 @@
 Work with MDS Provider data in JSON files.
 """
 
-from datetime import datetime, timedelta
 import hashlib
 import json
 import os
-import pandas as pd
-from pathlib import Path
-import requests
 import urllib
+from datetime import datetime, timedelta
+from pathlib import Path
 
-from .schemas import STATUS_CHANGES, SCHEMA_TYPES, TRIPS
+import pandas as pd
+import requests
+
+from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
 from .versions import UnexpectedVersionError, Version
 
 
@@ -60,6 +61,13 @@ class ProviderDataFiles():
 
         self.ls = kwargs.get("ls", self._ls)
 
+    def __repr__(self):
+        return "".join((
+            f"<mds.files.ProviderDataFiles (",
+            ", ".join([f"'{s}'" for s in [self.record_type]]),
+            ")>"
+        ))
+
     def _default_dir(self):
         """
         Get a default Path object for dumping data files.
@@ -104,7 +112,7 @@ class ProviderDataFiles():
 
             Additional keyword arguments are passed through to json.dump().
 
-        Returns:
+        Return:
             Path
                 With single_file=True, the Path object pointing to the file that was written.
                 With single_file=False, the Path object pointing to the directory where files were written.
@@ -216,7 +224,7 @@ class ProviderDataFiles():
             ValueError
                 When neither record_type or instance.record_type is specified.
 
-        Returns:
+        Return:
             tuple (Version, DataFrame)
                 With flatten=True, a (Version, DataFrame) tuple.
 
@@ -279,7 +287,7 @@ class ProviderDataFiles():
             IndexError
                 When no sources have been specified.
 
-        Returns:
+        Return:
             list
                 With a single file source, or multiple sources and flatten=True, a list of Provider payload dicts.
                 With multiple sources and flatten=False, a list of the raw contents of each file.
@@ -363,7 +371,7 @@ class ProviderDataFiles():
             ValueError
                 When neither record_type or instance.record_type is provided.
 
-        Returns:
+        Return:
             tuple (Version, list)
                 With flatten=True, a (Version, list) tuple.
 
