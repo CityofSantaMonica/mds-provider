@@ -8,9 +8,11 @@ import json
 import os
 import pandas as pd
 from pathlib import Path
+import requests
+import urllib
 
 from .schemas import STATUS_CHANGES, SCHEMA_TYPES, TRIPS
-from .versions import UnexpectedVersionError
+from .versions import UnexpectedVersionError, Version
 
 
 class ProviderDataFiles():
@@ -36,8 +38,8 @@ class ProviderDataFiles():
                 name for the file.
 
             ls: callable(sources=list): list, optional
-                A function that receives a mixed list of file/directory Path objects, and returns the
-                complete list of file Path objects to be read.
+                A function that receives a list of urllib.parse.ParseResult, and returns the
+                complete list of file Path objects and URL str to be read.
         """
         self.record_type = None
         self.sources = []
@@ -46,11 +48,11 @@ class ProviderDataFiles():
             if record_type in SCHEMA_TYPES:
                 self.record_type = record_type
             else:
-                self.sources.append(Path(record_type))
+                self.sources.append(self._parse(record_type))
 
-        self.sources.extend([Path(s) if not isinstance(s, Path) else s for s in sources])
+        self.sources.extend([self._parse(s) for s in sources])
 
-        file_name = kwargs.get("file_name", self._file_name)
+        file_name = kwargs.get("file_name", self._filename)
         if isinstance(file_name, str):
             self.file_name = lambda **kwargs: file_name
         else:
@@ -59,15 +61,21 @@ class ProviderDataFiles():
         self.ls = kwargs.get("ls", self._ls)
 
     def _default_dir(self):
-        dirs = list(filter(lambda path: path.is_dir(), self.sources))
-        return dirs[0] if len(dirs) == 1 else Path(".")
+        """
+        Get a default Path object for dumping data files.
+        """
+        dirs = [s.path for s in self.sources if self._isdir(s)]
+        return Path(dirs[0]) if len(dirs) == 1 else Path(".")
 
     def _record_type_or_raise(self, record_type):
+        """
+        Get a valid record_type or raise an exception.
+        """
         record_type = record_type or self.record_type
 
-        if not record_type:
-            raise ValueError("A record type must be specified.")
-        return record_type
+        if record_type in SCHEMA_TYPES:
+            return record_type
+        raise ValueError(f"A valid record type must be specified. Got {record_type}")
 
     def dump_payloads(self, record_type=None, *payloads, **kwargs):
         """
@@ -193,9 +201,13 @@ class ProviderDataFiles():
                 True (default) to flatten the final result from all sources into a single tuple.
                 False to keep each result separate.
 
+            headers: dict, optional
+                A dict of headers to send with requests made to URL paths.
+                Could also be a dict mapping an URL path to headers for that path.
+
             ls: callable(sources=list): list, optional
-                A function that receives a mixed list of file/directory Path objects, and returns the
-                complete list of file Path objects to be read.
+                A function that receives a list of urllib.parse.ParseResult, and returns the
+                complete list of file Path objects and URL str to be read.
 
         Raises:
             UnexpectedVersionError
@@ -226,11 +238,13 @@ class ProviderDataFiles():
 
         if flatten:
             if not all([Version(v) == version for v,_ in records]):
-                raise UnexpectedVersionError([Version(v) != version for v,_ in records][0], version)
-            # take the first version, combine each record list
-            version, records = results[0][0], [item for _,data in records for item in data]
-            return (Version(version), pd.DataFrame.from_records(records))
+                unexpected = [Version(v) for v,_ in records if Version(v) != version][0]
+                raise UnexpectedVersionError(unexpected, version)
+            # combine each record list
+            records = [item for _,data in records for item in data]
+            return version, pd.DataFrame.from_records(records)
         else:
+            # list of version, DataFrame tuples
             return [(Version(r[0]), pd.DataFrame.from_records(r[1])) for r in records]
 
     def load_payloads(self, record_type=None, *sources, **kwargs):
@@ -245,14 +259,19 @@ class ProviderDataFiles():
             sources: str, Path, list, optional
                 One or more paths to (directories containing) MDS payload (JSON) files.
                 Directories are expanded such that all corresponding files within are read.
+                URLs pointing to JSON files are also supported.
 
             flatten: bool, optional
                 True (default) to flatten the final result from all sources into a list of dicts.
                 False to keep each result as-is from the source.
 
-            ls: callable(sources=list): list, optional
-                A function that receives a mixed list of file/directory Path objects, and returns the
-                complete list of file Path objects to be read.
+            headers: dict, optional
+                A dict of headers to send with requests made to URL paths.
+                Could also be a dict mapping an URL path to headers for that path.
+
+            ls: callable(sources=list): tuple (files: list, urls: list), optional
+                A function that receives a list of urllib.parse.ParseResult, and returns
+                a tuple of a list of valid files, and a list of valid URLs to be read from.
 
             Additional keyword arguments are passed through to json.load().
 
@@ -265,11 +284,11 @@ class ProviderDataFiles():
                 With a single file source, or multiple sources and flatten=True, a list of Provider payload dicts.
                 With multiple sources and flatten=False, a list of the raw contents of each file.
         """
-        sources = [Path(s) if not isinstance(s, Path) else s for s in sources]
+        sources = [self._parse(s) for s in sources]
 
         # record_type is not a schema type, but a data source
         if record_type and record_type not in SCHEMA_TYPES:
-            sources.append(Path(record_type))
+            sources.append(self._parse(record_type))
             record_type = None
 
         if len(sources) == 0:
@@ -281,13 +300,16 @@ class ProviderDataFiles():
         record_type = record_type or self.record_type
 
         flatten = kwargs.pop("flatten", True)
+        headers = kwargs.pop("headers", {})
 
-        # obtain a list of file Paths to read
+        # obtain a list of file Paths and URL str to read
         ls = kwargs.pop("ls", self.ls)
-        files = ls(sources)
+        files, urls = ls(sources)
 
-        # load from each file into a composite list
-        data = [json.load(f.open(), **kwargs) for f in files]
+        # load from each file/URL pointer into a composite list
+        data = []
+        data.extend([json.load(f.open(), **kwargs) for f in files])
+        data.extend([requests.get(u, headers=headers.get(u, headers)).json() for u in urls])
 
         # filter out payloads with non-matching record_type
         if record_type:
@@ -326,9 +348,13 @@ class ProviderDataFiles():
                 True (default) to flatten the final result from all sources into a single list.
                 False to keep each result separate.
 
+            headers: dict, optional
+                A dict of headers to send with requests made to URL paths.
+                Could also be a dict mapping an URL path to headers for that path.
+
             ls: callable(sources=list): list, optional
-                A function that receives a mixed list of file/directory Path objects, and returns the
-                complete list of file Path objects to be read.
+                A function that receives a list of urllib.parse.ParseResult, and returns the
+                complete list of file Path objects and URL str to be read.
 
         Raises:
             UnexpectedVersionError
@@ -363,24 +389,26 @@ class ProviderDataFiles():
             version = Version(payloads[0]["version"])
 
         # collect versions and data from each payload
-        results = []
+        _payloads = []
         for payload in payloads:
             if not isinstance(payload, list):
                 payload = [payload]
             for page in payload:
-                results.append((page["version"], page["data"][record_type]))
+                _payloads.append((page["version"], page["data"][record_type]))
 
         if flatten:
-            if not all([Version(v) == version for v,_ in results]):
-                raise UnexpectedVersionError([Version(v) != version for v,_ in results][0], version)
-            # take the first version, and unroll each item from each page
-            version, records = results[0][0], [item for _,data in results for item in data]
-            return Version(version), records
+            if not all([Version(v) == version for v,_ in _payloads]):
+                # find the first non-matching version and raise
+                unexpected = [Version(v) for v,_ in _payloads if Version(v) != version][0]
+                raise UnexpectedVersionError(unexpected, version)
+            # return the version, records tuple
+            return version, [item for _,data in _payloads for item in data]
         else:
-            return [(Version(r[0]), r[1]) for r in results]
+            # list of version, records tuples
+            return [(Version(r[0]), r[1]) for r in _payloads]
 
-    @staticmethod
-    def _file_name(**kwargs):
+    @classmethod
+    def _filename(cls, **kwargs):
         """
         Generate a filename from the given parameters.
         """
@@ -421,17 +449,53 @@ class ProviderDataFiles():
 
         return f"{'_'.join(providers)}_{record_type}_{start.strftime(fmt)}_{end.strftime(fmt)}{extension}"
 
-    @staticmethod
-    def _ls(sources):
+    @classmethod
+    def _isdir(cls, source):
         """
-        Create a list of file Paths from a mix of file/directory sources.
+        Return True if source is a valid directory that exists.
         """
-        # separate into files and directories
-        files = [f for f in sources if f.is_file() and f.exists() and f.suffix.lower() == ".json"]
-        dirs = [d for d in sources if d.is_dir() and d.exists()]
+        path = Path(source.path)
+        return not cls._isfile(source) and path.is_dir() and path.exists()
+
+    @classmethod
+    def _isfile(cls, source):
+        """
+        Return True if path is a valid file that exists.
+        """
+        path = Path(source.path)
+        return not cls._isurl(source) and path.is_file() and path.exists()
+
+    @classmethod
+    def _isurl(cls, source):
+        """
+        Return True if source is a valid URL.
+        """
+        return source.scheme in ("http", "https") and source.netloc
+
+    @classmethod
+    def _ls(cls, sources):
+        """
+        Create a tuple of lists valid file Paths and URLs from a list of urllib.parse.ParseResult.
+        """
+        # separate into files and directories and urls
+        files = [Path(f.path) for f in sources if cls._isfile(f)]
+        dirs = [Path(d.path) for d in sources if cls._isdir(d)]
+        urls = [urllib.parse.urlunparse(u) for u in sources if cls._isurl(u)]
 
         # expand into directories
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
-        # filter non-existant files
-        return files
+        return files, urls
+
+    @classmethod
+    def _parse(cls, source):
+        """
+        Parse a data file source argument into an urllib.parse.ParseResult instance.
+        """
+        return urllib.parse.urlparse(str(source))
+
+    @classmethod
+    def _unparse(cls, parsed):
+        """
+        Convert a urllib.parse.ParseResult instance back into for usable for reading.
+        """
