@@ -15,7 +15,7 @@ def on_conflict_statement(on_conflict_update=None):
             Generate a statement like "ON CONFLICT condition DO UPDATE SET actions"
             actions may be a SQL str, a list of column action str, or a dict of column=value pairs.
 
-    Returns:
+    Return:
         str
     """
     if on_conflict_update:
@@ -47,7 +47,7 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         version: str, Version, optional
             The MDS version to target. By default, Version.mds_lower().
 
-    Returns:
+    Return:
         str
     """
     on_conflict_update = kwargs.pop("on_conflict_update", None)
@@ -142,7 +142,7 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         version: str, Version, optional
             The MDS version to target. By default, Version.mds_lower().
 
-    Returns:
+    Return:
         str
     """
     on_conflict_update = kwargs.pop("on_conflict_update", None)

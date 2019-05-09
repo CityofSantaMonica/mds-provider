@@ -4,8 +4,9 @@ Generating random geometry.
 
 import math
 import random
-from shapely.geometry import Point
+
 import shapely.ops
+from shapely.geometry import Point
 
 
 def point_within(boundary):
@@ -16,7 +17,7 @@ def point_within(boundary):
         boundary: shapely.geometry.Polygon
             The geometry of the boundary.
 
-    Returns:
+    Return:
         shapely.geometry.Point
             A point inside the boundary.
     """
@@ -59,7 +60,7 @@ def point_nearby(point, dist, bearing=None, boundary=None):
             If it proves difficult to find a point at the specified distance within the boundary,
             the returned point may lie less than dist meters from point.
 
-    Returns:
+    Return:
         shapely.geometry.Point
             The newly calculated point.
     """

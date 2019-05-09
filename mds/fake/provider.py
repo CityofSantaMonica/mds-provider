@@ -2,18 +2,17 @@
 Generating fake MDS Provider data.
 """
 
-from datetime import datetime, timedelta
 import math
 import random
-import scipy.stats
 import uuid
+from datetime import datetime, timedelta
 
-from ..geometry import extract_point, to_feature
-from ..schemas import ProviderSchema, STATUS_CHANGES, TRIPS
+import scipy.stats
 
-from .geometry import *
-from .util import *
-
+from mds import geometry
+from ..schemas import ProviderSchema
+from ..fake import util
+from ..versions import Version
 
 BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
@@ -28,7 +27,7 @@ class ProviderDataGenerator:
 
     TD_HOUR = timedelta(seconds=3600)
 
-    def __init__(self, **kwargs):
+    def __init__(self, boundary, **kwargs):
         """
         Initialize a new DataGenerator using the provided context.
 
@@ -39,25 +38,30 @@ class ProviderDataGenerator:
             speed: int, optional
                 The average speed of devices in meters/second.
 
-            vehicle_types:
-                The vehicle_types to use for generation
+            vehicle_types: str, list, optional
+                Comma-separated string or list of vehicle_types to use for generation.
 
-            propulsion_types:
-                The propulsion_types to use for generation
+            propulsion_types: str, list, optional.
+                Comma-separated string or list of propulsion_types to use for generation.
+
+            version: str, Version, optional
+                The MDS version to target. By default, use Version.mds_lower().
         """
-        schema = ProviderSchema(TRIPS)
-
-        self.boundary = kwargs.pop("boundary")
-
+        self.boundary = boundary
+        self.version = Version(kwargs.pop("version", Version.mds_lower()))
+        self.trips_schema = ProviderSchema.trips(self.version)
         self.speed = kwargs.get("speed")
 
-        self.vehicle_types = kwargs.get("vehicle_types", schema.vehicle_types())
+        self.vehicle_types = kwargs.get("vehicle_types", self.trips_schema.vehicle_types)
         if isinstance(self.vehicle_types, str):
             self.vehicle_types = self.vehicle_types.split(",")
 
-        self.propulsion_types = kwargs.get("propulsion_types", schema.propulsion_types())
+        self.propulsion_types = kwargs.get("propulsion_types", self.trips_schema.propulsion_types)
         if isinstance(self.propulsion_types, str):
             self.propulsion_types = self.propulsion_types.split(",")
+
+    def __repr__(self):
+        return f"<mds.fake.ProviderDataGenerator ('{self.version}')>"
 
     def devices(self, N, provider_name, provider_id=None):
         """
@@ -84,7 +88,7 @@ class ProviderDataGenerator:
             device = dict(provider_id=provider_id,
                           provider_name=provider_name,
                           device_id=uuid.uuid4(),
-                          vehicle_id=random_string(6),
+                          vehicle_id=util.random_string(6),
                           vehicle_type=random.choice(self.vehicle_types),
                           propulsion_type=[random.choice(self.propulsion_types)])
 

@@ -2,8 +2,9 @@
 Work with MDS versions.
 """
 
-from packaging.version import LegacyVersion, parse
 import sys
+
+from packaging.version import LegacyVersion, parse
 
 
 __version__ = "0.4.0"
@@ -82,6 +83,14 @@ class Version():
             self._version = parse(f"{self.tuple[0]}.{self.tuple[1]}.{sys.maxsize}")
             self._legacy = (1, None)
 
+    def __repr__(self):
+        if self._legacy:
+            _,legacy = self._legacy
+            parts = [p for p in [*self.tuple, legacy] if p is not None]
+            return ".".join(map(str, parts))
+        else:
+            return ".".join(map(str, self.tuple))
+
     @property
     def header(self):
         """
@@ -136,20 +145,12 @@ class Version():
     def __ne__(self, version2):
         return self._version.__ne__(version2._version)
 
-    def __repr__(self):
-        if self._legacy:
-            _,legacy = self._legacy
-            parts = [p for p in [*self.tuple, legacy] if p is not None]
-            return ".".join(map(str, parts))
-        else:
-            return ".".join(map(str, self.tuple))
-
     @classmethod
     def library(cls):
         """
         The Version of the library currently being used.
 
-        Returns:
+        Return:
             Version
         """
         return Version(__version__)
@@ -159,7 +160,7 @@ class Version():
         """
         The MDS Version range supported by the library version.
 
-        Returns:
+        Return:
             tuple (lower: Version, upper: Version)
                 The partially-closed range [lower, upper) of version compatibility.
                 lower is the smallest version supported by the library version.
@@ -172,7 +173,7 @@ class Version():
         """
         The smallest MDS Version supported by the library version.
 
-        Returns:
+        Return:
             Version
         """
         return Version(__mds_lower_version__)
@@ -182,7 +183,7 @@ class Version():
         """
         The smallest MDS Version not supported by the library version.
 
-        Returns:
+        Return:
             Version
         """
         return Version(__mds_upper_version__)
@@ -196,7 +197,7 @@ class Version():
             version: str, Version
                 The MDS version to test for support.
 
-        Returns:
+        Return:
             bool
         """
         version = Version(version)

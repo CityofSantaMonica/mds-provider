@@ -1,13 +1,14 @@
 """
-Encoding MDS Provider data into useful formats.
+Encoding MDS Provider data.
 """
 
-from datetime import datetime
 import json
-from shapely.geometry import Point, Polygon
+from datetime import datetime
 from uuid import UUID
 
-from .geometry import to_feature
+from shapely.geometry import Point, Polygon
+
+from mds import geometry
 from .versions import UnsupportedVersionError, Version
 
 
@@ -23,8 +24,6 @@ class MdsJsonEncoder(json.JSONEncoder):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialize a new MdsJsonEncoder.
-
         Parameters:
             date_format: str
                 Configure how dates are formatted using one of:
@@ -38,6 +37,9 @@ class MdsJsonEncoder(json.JSONEncoder):
         self.date_format = kwargs.pop("date_format", "unix")
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
         json.JSONEncoder.__init__(self, *args, **kwargs)
+
+    def __repr__(self):
+        return f"<mds.encoding.MdsJsonEncoder ('{self.version}', '{self.date_format}')>"
 
     def default(self, obj):
         """
@@ -59,7 +61,7 @@ class MdsJsonEncoder(json.JSONEncoder):
                 return str(obj)
 
         if isinstance(obj, Point) or isinstance(obj, Polygon):
-            return to_feature(obj)
+            return geometry.to_feature(obj)
 
         if isinstance(obj, tuple):
             return list(obj)

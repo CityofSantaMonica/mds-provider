@@ -2,11 +2,11 @@
 Generating random data of miscellaneous types.
 """
 
-from datetime import datetime, timedelta
 import json
 import random
 import string
 import uuid
+from datetime import datetime, timedelta
 
 
 def random_date_from(date,
@@ -25,7 +25,7 @@ def random_date_from(date,
         max_td: timedelta, optional
             The maximum offset from the reference datetime (could be negative).
 
-    Returns:
+    Return:
         datetime
             A new_date such that (date + min_td) <= new_date < (date + max_td).
     """
@@ -46,7 +46,7 @@ def random_string(k, chars=None):
         chars: iterable, optional
             The alphabet of characters from which to generate the string. By default, [A-Z0-9]
 
-    Returns:
+    Return:
         str
             The generated string.
     """
@@ -63,7 +63,7 @@ def random_file_url(company):
         company: str
             The company name for the hostname.
 
-    Returns:
+    Return:
         str
             A generated url for an image on the company's host.
     """
