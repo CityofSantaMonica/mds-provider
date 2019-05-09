@@ -2,4 +2,4 @@
 Work with MDS Provider database backends.
 """
 
-from .db import data_engine, ProviderDatabase
+from .db import data_engine, Database
