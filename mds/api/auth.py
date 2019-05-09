@@ -16,7 +16,7 @@ class AuthorizationToken():
 
         @classmethod
         can_auth(cls, provider): bool
-            return True if the auth type can be used on the provider.
+            Return True if the auth type can be used on the provider.
 
     See OAuthClientCredentialsAuth for an example implementation.
     """
@@ -119,7 +119,9 @@ def auth_types():
     """
     Return a list of all supported authentication types.
     """
-    types = AuthorizationToken.__subclasses__()
-    types.append(AuthorizationToken)
+    def all_subs(cls):
+        return set(cls.__subclasses__()).union(
+            [s for c in cls.__subclasses__() for s in all_subs(c)]
+        ).union([cls])
 
-    return types
+    return all_subs(AuthorizationToken)

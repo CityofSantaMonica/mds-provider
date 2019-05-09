@@ -85,6 +85,13 @@ class ProviderDataFiles():
             return record_type
         raise ValueError(f"A valid record type must be specified. Got {record_type}")
 
+    @property
+    def valid_sources(self):
+        """
+        True if this ProviderDataFiles references one or more valid file sources.
+        """
+        return all([self._isfile(s) or self._isurl(s) for s in self.sources])
+
     def dump_payloads(self, record_type=None, *payloads, **kwargs):
         """
         Write MDS Provider payloads to JSON files.
@@ -217,7 +224,7 @@ class ProviderDataFiles():
                 A function that receives a list of urllib.parse.ParseResult, and returns the
                 complete list of file Path objects and URL str to be read.
 
-        Raises:
+        Raise:
             UnexpectedVersionError
                 When flatten=True and a version mismatch is found amongst the data.
 
@@ -283,7 +290,7 @@ class ProviderDataFiles():
 
             Additional keyword arguments are passed through to json.load().
 
-        Raises:
+        Raise:
             IndexError
                 When no sources have been specified.
 
@@ -364,7 +371,7 @@ class ProviderDataFiles():
                 A function that receives a list of urllib.parse.ParseResult, and returns the
                 complete list of file Path objects and URL str to be read.
 
-        Raises:
+        Raise:
             UnexpectedVersionError
                 When flatten=True and a version mismatch is found amongst the data.
 
@@ -483,7 +490,7 @@ class ProviderDataFiles():
     @classmethod
     def _ls(cls, sources):
         """
-        Create a tuple of lists valid file Paths and URLs from a list of urllib.parse.ParseResult.
+        Create a tuple of lists of valid file Paths and URLs from a list of urllib.parse.ParseResult.
         """
         # separate into files and directories and urls
         files = [Path(f.path) for f in sources if cls._isfile(f)]
