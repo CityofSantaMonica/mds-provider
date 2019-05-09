@@ -33,6 +33,7 @@ python setup.py install
 | [`mds.fake`](mds/fake/) | Generate fake `provider` data for testing and development |
 | [`mds.files`](mds/files.py) | Work with `provider` data in JSON files |
 | [`mds.geometry`](mds/geometry.py) | Helpers for GeoJSON-based geometry objects |
+| [`mds.github`](mds/github.py) | Data and helpers for MDS on GitHub. |
 | [`mds.providers`](mds/providers.py) | Parse [Provider registry][registry] files |
 | [`mds.schemas`](mds/schemas.py) | Validate data using [Provider JSON schemas][schemas] |
 | [`mds.versions`](mds/versions.py) | Simple representation of [MDS versions][versions] |
