@@ -8,7 +8,7 @@ import jsonschema
 import requests
 
 from mds import github, geometry
-from .versions import Version
+from .versions import UnsupportedVersionError, Version
 
 
 STATUS_CHANGES = "status_changes"
@@ -41,11 +41,15 @@ class ProviderSchema():
 
         # acquire the schema
         self.schema_type = schema_type
+        self.ref = ref or github.MDS_DEFAULT_REF
 
         try:
-            self.ref = Version(ref)
+            self.ref = Version(self.ref)
         except:
-            self.ref = ref or github.MDS_DEFAULT_REF
+            pass
+        finally:
+            if isinstance(self.ref, Version) and self.ref.unsupported:
+                raise UnsupportedVersionError(self.ref)
 
         self.schema_url = github.schema_url(schema_type, self.ref)
 
@@ -308,9 +312,11 @@ class ProviderDataValidator():
                 The reference (git commit, branch, tag, or version) at which to reference the schema.
         """
         self.schema = self._get_schema_instance_or_raise(schema, ref)
+        self.ref = self.schema.ref
+        self.schema_type = self.schema.schema_type
 
     def __repr__(self):
-        return f"<mds.schemas.ProviderDataValidator ('{self.schema.ref}', '{self.schema.schema_type}')>"
+        return f"<mds.schemas.ProviderDataValidator ('{self.ref}', '{self.schema_type}')>"
 
     def _get_schema_instance_or_raise(self, schema, ref):
         """
