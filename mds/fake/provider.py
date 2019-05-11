@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import scipy.stats
 
 from mds import geometry
-from ..schemas import ProviderSchema
+from ..schemas import Schema
 from ..fake import util
 from ..versions import Version
 
@@ -49,7 +49,7 @@ class ProviderDataGenerator:
         """
         self.boundary = boundary
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        self.trips_schema = ProviderSchema.trips(self.version)
+        self.trips_schema = Schema.trips(self.version)
         self.speed = kwargs.get("speed")
 
         self.vehicle_types = kwargs.get("vehicle_types", self.trips_schema.vehicle_types)

@@ -16,7 +16,7 @@ TRIPS = "trips"
 SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS ]
 
 
-class ProviderSchema():
+class Schema():
     """
     Represents a MDS Provider JSON Schema.
     """
@@ -54,7 +54,7 @@ class ProviderSchema():
         self.schema_url = github.schema_url(schema_type, self.ref)
 
         try:
-            from .files import ProviderDataFiles
+            from .files import DataFile
             # load_payloads always returns a list, so take the first item from that list as the schema
             self.schema = requests.get(self.schema_url).json()
         except:
@@ -81,7 +81,7 @@ class ProviderSchema():
             iterator
                 An iterator that yields validation errors.
         """
-        validator = ProviderDataValidator(self)
+        validator = DataValidator(self)
         for error in validator.validate(instance_source):
             yield error
 
@@ -162,17 +162,17 @@ class ProviderSchema():
         """
         Acquires the status_changes schema.
         """
-        return ProviderSchema(STATUS_CHANGES, ref)
+        return Schema(STATUS_CHANGES, ref)
 
     @classmethod
     def trips(cls, ref=None):
         """
         Acquires the trips schema.
         """
-        return ProviderSchema(TRIPS, ref)
+        return Schema(TRIPS, ref)
 
 
-class ProviderDataValidationError():
+class DataValidationError():
     """
     Represents a failed MDS Provider data validation.
     """
@@ -294,7 +294,7 @@ class ProviderDataValidationError():
         return messages + snippet
 
 
-class ProviderDataValidator():
+class DataValidator():
     """
     Validate MDS Provider data against JSON Schemas.
     """
@@ -316,18 +316,18 @@ class ProviderDataValidator():
         self.schema_type = self.schema.schema_type
 
     def __repr__(self):
-        return f"<mds.schemas.ProviderDataValidator ('{self.ref}', '{self.schema_type}')>"
+        return f"<mds.schemas.DataValidator ('{self.ref}', '{self.schema_type}')>"
 
     def _get_schema_instance_or_raise(self, schema, ref):
         """
         Helper to return a ProviderSchema instance from the possible arguments.
         """
         # determine the ProviderSchema instance to use
-        if isinstance(schema, ProviderSchema):
+        if isinstance(schema, Schema):
             return schema
         elif schema in SCHEMA_TYPES:
-            return ProviderSchema(schema, ref=ref)
-        elif isinstance(getattr(self, "schema"), ProviderSchema):
+            return Schema(schema, ref=ref)
+        elif isinstance(getattr(self, "schema"), Schema):
             return self.schema
         else:
             raise ValueError("Could not obtain a schema for validation.")
@@ -361,8 +361,8 @@ class ProviderDataValidator():
             instances = [instance_source]
         else:
             try:
-                from .files import ProviderDataFiles
-                instances = ProviderDataFiles(schema, instance_source).load_payloads()
+                from .files import DataFile
+                instances = DataFile(schema, instance_source).load_payloads()
             except:
                 raise TypeError(f"Unrecognized instance_source type: {type(instance_source)}.")
 
@@ -374,7 +374,7 @@ class ProviderDataValidator():
         for instance in instances:
             # do validation, converting and yielding errors
             for error in v.iter_errors(instance):
-                yield ProviderDataValidationError(error, instance, schema)
+                yield DataValidationError(error, instance, schema)
 
     @classmethod
     def _get_validator(cls, schema):
@@ -388,11 +388,11 @@ class ProviderDataValidator():
         """
         Create a Status Changes validator.
         """
-        return ProviderDataValidator(schema_type=STATUS_CHANGES, ref=ref)
+        return DataValidator(STATUS_CHANGES, ref)
 
     @classmethod
     def trips(cls, ref=None):
         """
         Create a Trips validator.
         """
-        return ProviderDataValidator(schema_type=TRIPS, ref=ref)
+        return DataValidator(TRIPS, ref)
