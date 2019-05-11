@@ -2,16 +2,19 @@
 Work with MDS Provider data in JSON files.
 """
 
+import csv
 import hashlib
 import json
 import os
 import urllib
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import UUID
 
 import pandas as pd
 import requests
 
+from mds import github
 from .encoding import JsonEncoder
 from .providers import Provider
 from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
@@ -626,3 +629,84 @@ class DataFile(BaseFile):
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
         return files, urls
+
+
+class RegistryFile:
+    """
+    Represents a local or remote Provider registry file.
+
+    See https://github.com/CityOfLosAngeles/mobility-data-specification/blob/master/providers.csv
+    """
+
+    _registry = {}
+
+    def __init__(self, ref=github.MDS_DEFAULT_REF, path=None, **kwargs):
+        """
+        Parameters:
+            ref: str, Version
+                The reference (git commit, branch, tag, or version) at which to query the registry.
+                By default, download from GitHub master.
+
+            path: str, Path, optional
+                A path to a local registry file to skip the GitHub download.
+        """
+        key = (ref, path)
+        if key not in self._registry:
+            self._registry[key] = self._get_registry(*key)
+
+        self.providers = self._registry[key]
+
+    def __repr__(self):
+        provider = self.providers[0]
+        return f"<mds.files.RegistryFile ('{provider.registry_ref or provider.registry_path}')>"
+
+    def get(self, provider, **kwargs):
+        """
+        Get a Provider instance from this RegistryFile.
+
+        Parameters:
+            provider: str, UUID
+                A provider_id or provider_name to look for in the registry.
+
+            Additional keyword arguments are set as attributes on the Provider instance.
+
+        Return:
+            Provider
+                The matching Provider instance, or None.
+        """
+        try:
+            provider = UUID(provider)
+        except ValueError:
+            pass
+
+        # filter for matching provider(s)
+        registry = [p for p in self.providers if any([
+            isinstance(provider, str) and p.provider_name.lower() == provider.lower(),
+            isinstance(provider, UUID) and p.provider_id == provider
+        ])]
+
+        if len(registry) == 1:
+            # re-init with the record from registry and config
+            _kwargs = { **vars(registry[0]), **kwargs }
+            return Provider(**_kwargs)
+        else:
+            return None
+
+    @staticmethod
+    def _get_registry(ref, path):
+        if path:
+            path = Path(path)
+            with path.open("r") as f:
+                return RegistryFile._parse_csv(f.readlines(), ref=ref, path=path)
+        else:
+            url = github.registry_url(ref)
+            with requests.get(url, stream=True) as r:
+                lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
+                return RegistryFile._parse_csv(lines, ref=ref, path=path)
+
+    @staticmethod
+    def _parse_csv(lines, **kwargs):
+        """
+        Helper parses CSV lines into a list of Provider instances.
+        """
+        return [Provider(**record, **kwargs) for record in csv.DictReader(lines)]
