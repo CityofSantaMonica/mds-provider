@@ -5,14 +5,15 @@ MDS Provider API client implementation.
 import time
 from datetime import datetime
 
-from ..encoding import MdsJsonEncoder
+from ..encoding import TimestampEncoder
+from ..files import ConfigFile
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
 from .auth import auth_types
 
 
-class ProviderClient():
+class Client():
     """
     Client for MDS Provider APIs.
     """
@@ -23,7 +24,7 @@ class ProviderClient():
 
         Parameters:
             provider: str, UUID, Provider, optional
-                Provider instance or identifier that this client uses by default.
+                Provider instance or identifier that this client queries by default.
 
             config: dict, optional
                 Attributes to merge with the Provider instance.
@@ -32,17 +33,19 @@ class ProviderClient():
                 The MDS version to target. By default, use Version.mds_lower().
         """
         self.config = kwargs.pop("config", None)
+        if isinstance(self.config, ConfigFile):
+            self.config = self.config.dump()
 
         if provider:
             provider = provider.provider_name if isinstance(provider, Provider) else provider
-            self.provider = Provider(provider, self.config)
+            self.provider = Provider(provider, **self.config)
 
-        self.version = Version(kwargs.pop("version", Version.mds_lower()))
+        self.version = Version(kwargs.pop("version", self.provider.version or Version.mds_lower()))
 
         if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
 
-        self.encoder = ProviderClient._encoder_or_raise(self.version)
+        self.encoder = self._encoder_or_raise(self.version)
 
     def __repr__(self):
         return f"<mds.api.ProviderClient ('{self.version}', '{self.provider.provider_name}')>"
@@ -58,45 +61,13 @@ class ProviderClient():
         if version is None or version == self.version:
             return self.encoder.encode(dt)
         else:
-            return ProviderClient._encoder_or_raise(version).encode(dt)
+            return self._encoder_or_raise(version).encode(dt)
 
     def _media_type_version_header(self):
         """
         The custom MDS media-type and version header, using this client's version
         """
         return f"application/vnd.mds.provider+json;version={self.version.header}"
-
-    def _prepare_get(self, provider, record_type, **kwargs):
-        """
-        Prepare parameters for a GET request to an endpoint of the given type.
-
-        Return:
-            tuple (provider: Provider, record_type: str, params: dict, paging: bool, rate_limit: int)
-        """
-        config = kwargs.pop("config", self.config)
-        provider = self._provider_or_raise(provider, config)
-        paging = bool(kwargs.pop("paging", True))
-        rate_limit = int(kwargs.pop("rate_limit", 0))
-        version = Version(kwargs.pop("version", self.version))
-
-        # select the appropriate time range parameter names from record_type and version
-        if record_type == STATUS_CHANGES or version < Version("0.3.0"):
-            lo_key, hi_key = "start_time", "end_time"
-        else:
-            lo_key, hi_key = "min_end_time", "max_end_time"
-
-        # get each of the time parameters, formatted for this version
-        times = {}
-        times[lo_key] = self._date_format(kwargs.pop(lo_key, None), version=version)
-        times[hi_key] = self._date_format(kwargs.pop(hi_key, None), version=version)
-
-        # combine with leftover kwargs
-        params = {
-            **times,
-            **kwargs
-        }
-
-        return provider, record_type, params, paging, rate_limit
 
     def _provider_or_raise(self, provider, config):
         """
@@ -110,7 +81,88 @@ class ProviderClient():
         if isinstance(provider, Provider):
             provider = provider.provider_name
 
-        return Provider(provider, config)
+        if instance(config, ConfigFile):
+            config = config.dump()
+
+        return Provider(provider, **config)
+
+    def get(self, record_type, provider=None, **kwargs):
+        """
+        Request Provider data, returning a list of non-empty payloads.
+
+        Parameters:
+            record_type: str
+                The type of MDS Provider record ("status_changes" or "trips").
+
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier to issue this request to.
+                By default issue the request to this client's Provider instance.
+
+            config: dict, ConfigFile, optional
+                Attributes to merge with the Provider instance.
+
+            end_time: datetime, int, optional
+                Filters for records occuring before the given time.
+                Should be a datetime or Version-specific numeric UNIX timestamp.
+
+            max_end_time: datetime, int, optional
+                Filters for trips where end_time occurs before the given time.
+                Should be a datetime or int UNIX milliseconds.
+                Only valid when version >= Version("0.3.0") and requesting trips.
+
+            min_end_time: datetime, int, optional
+                Filters for trips where end_time occurs at or after the given time.
+                Should be a datetime or int UNIX milliseconds.
+                Only valid when version >= Version("0.3.0") and requesting trips.
+
+            paging: bool, optional
+                True (default) to follow paging and request all available data.
+                False to request only the first page.
+
+            start_time: datetime, int, optional
+                Filters for records occuring at or after the given time.
+                Should be a datetime or Version-specific numeric UNIX timestamp.
+
+            rate_limit: int, optional
+                Number of seconds of delay to insert between paging requests.
+
+            version: str, Version, optional
+                The MDS version to target.
+
+            Additional keyword arguments are passed through as API request parameters.
+
+        Return:
+            list
+                The non-empty payloads (e.g. payloads with data records), one for each requested page.
+        """
+        config = kwargs.pop("config", self.config)
+        provider = self._provider_or_raise(provider, config)
+        paging = bool(kwargs.pop("paging", True))
+        rate_limit = int(kwargs.pop("rate_limit", 0))
+        version = Version(kwargs.pop("version", self.version))
+
+        # select the appropriate time range parameter names from record_type and version
+
+        times = {}
+        # the querystring for status_changes and trips < 0.3.0
+        start, end = kwargs.pop("start_time", None), kwargs.pop("end_time", None)
+
+        if record_type == STATUS_CHANGES or version < Version("0.3.0"):
+            times["start_time"] = start
+            times["end_time"] = end
+        else:
+            # set to the new querystring arg, but allow use of either new or old
+            times["min_end_time"] = self._date_format(kwargs.pop("min_end_time", start), version=version)
+            times["max_end_time"] = self._date_format(kwargs.pop("max_end_time", end), version=version)
+
+        # combine with leftover kwargs
+        params = {
+            **times,
+            **kwargs
+        }
+
+        # request
+        return self._request(provider, record_type, params, paging, rate_limit)
 
     def get_status_changes(self, provider=None, **kwargs):
         """
@@ -121,7 +173,7 @@ class ProviderClient():
                 Provider instance or identifier to issue this request to.
                 By default issue the request to this client's Provider instance.
 
-            config: dict, optional
+            config: dict, ConfigFile, optional
                 Attributes to merge with the Provider instance.
 
             start_time: datetime, int, optional
@@ -143,12 +195,12 @@ class ProviderClient():
                 The MDS version to target.
 
             Additional keyword arguments are passed through as API request parameters.
+
         Return:
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
-        prepared = self._prepare_get(provider, STATUS_CHANGES, **kwargs)
-        return ProviderClient._request(*prepared)
+        return self.get(STATUS_CHANGES, provider, **kwargs)
 
     def get_trips(self, provider=None, **kwargs):
         """
@@ -159,7 +211,7 @@ class ProviderClient():
                 Provider instance or identifier to issue this request to.
                 By default issue the request to this client's Provider instance.
 
-            config: dict, optional
+            config: dict, ConfigFile, optional
                 Attributes to merge with the Provider instance.
 
             device_id: str, UUID, optional
@@ -204,8 +256,7 @@ class ProviderClient():
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
-        prepared = self._prepare_get(provider, TRIPS, **kwargs)
-        return ProviderClient._request(*prepared)
+        return self.get(TRIPS, provider, **kwargs)
 
     @staticmethod
     def _build_url(provider, record_type):
@@ -237,10 +288,10 @@ class ProviderClient():
     @staticmethod
     def _encoder_or_raise(version):
         """
-        Gets a MdsJsonEncoder instance for the given version, if supported.
+        Gets a TimestampEncoder instance for the given version, if supported.
         """
         if version.supported:
-            return MdsJsonEncoder(date_format="unix", version=version)
+            return TimestampEncoder(date_format="unix", version=version)
         else:
             raise UnsupportedVersionError(version)
 
@@ -268,39 +319,39 @@ class ProviderClient():
 
         Returns a list of payloads, with length corresponding to the number of non-empty responses.
         """
-        url = ProviderClient._build_url(provider, record_type)
+        url = Client._build_url(provider, record_type)
         results = []
 
         # establish an authenticated session
-        session = ProviderClient._session(provider)
+        session = Client._session(provider)
 
         # get the initial page of data
         r = session.get(url, params=params)
 
         if r.status_code is not 200:
-            ProviderClient._describe(r)
+            Client._describe(r)
             return results
 
         this_page = r.json()
 
-        if ProviderClient._has_data(this_page, record_type):
+        if Client._has_data(this_page, record_type):
             results.append(this_page)
 
         # get subsequent pages of data
-        next_url = ProviderClient._next_url(this_page)
+        next_url = Client._next_url(this_page)
         while paging and next_url:
             r = session.get(next_url)
 
             if r.status_code is not 200:
-                ProviderClient._describe(r)
+                Client._describe(r)
                 break
 
             this_page = r.json()
 
-            if ProviderClient._has_data(this_page, record_type):
+            if Client._has_data(this_page, record_type):
                 results.append(this_page)
 
-            next_url = ProviderClient._next_url(this_page)
+            next_url = Client._next_url(this_page)
 
             if next_url and rate_limit:
                 time.sleep(rate_limit)

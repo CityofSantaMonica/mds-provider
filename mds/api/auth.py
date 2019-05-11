@@ -45,7 +45,7 @@ class AuthorizationToken():
         ])
 
 
-class OAuthClientCredentialsAuth(AuthorizationToken):
+class OAuthClientCredentials(AuthorizationToken):
     """
     Represents an authenticated session via OAuth 2.0 client_credentials grant flow.
     """
@@ -76,7 +76,7 @@ class OAuthClientCredentialsAuth(AuthorizationToken):
         ])
 
 
-class SpinClientCredentialsAuth(AuthorizationToken):
+class SpinClientCredentials(AuthorizationToken):
     """
     Represents an authenticated session via the Spin authentication scheme, documented at:
     https://web.spin.pm/datafeeds
