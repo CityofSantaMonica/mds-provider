@@ -2,4 +2,4 @@
 Client implementation of the MDS Provider API.
 """
 
-from .client import ProviderClient
+from .client import Client
