@@ -23,6 +23,7 @@ setup(
         "packaging",
         "pandas",
         "psycopg2-binary",
+        "python-dateutil",
         "requests",
         "scipy",
         "Shapely",
