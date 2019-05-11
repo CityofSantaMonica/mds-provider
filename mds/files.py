@@ -12,19 +12,175 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from .encoding import JsonEncoder
+from .providers import Provider
 from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
 from .versions import UnexpectedVersionError, Version
 
 
-class ProviderDataFiles():
+class BaseFile:
+    """
+    Base class for working with Provider files.
+    """
+
+    def __init__(self, *sources, **kwargs):
+        """
+        Parameters:
+            sources: str, Path, list, optional
+                Zero or more paths to track.
+        """
+        self._sources = []
+
+        for source in sources:
+            if isinstance(source, list):
+                self._sources.extend([self._parse(s) for s in source])
+            else:
+                self._sources.append(self._parse(source))
+
+        self._sources = list(filter(None, self._sources))
+
+    @property
+    def file_sources(self):
+        """
+        True if this instance references one or more valid file sources.
+        """
+        return all([self._isfile(s) or self._isurl(s) for s in self._sources])
+
+    @classmethod
+    def _isdir(cls, source):
+        """
+        Return True if source is a valid directory that exists.
+        """
+        path = Path(source.path)
+        return not cls._isfile(source) and path.is_dir() and path.exists()
+
+    @classmethod
+    def _isfile(cls, source):
+        """
+        Return True if path is a valid file that exists.
+        """
+        path = Path(source.path)
+        return not cls._isurl(source) and path.is_file() and path.exists()
+
+    @classmethod
+    def _isurl(cls, source):
+        """
+        Return True if source is a valid URL.
+        """
+        return source.scheme in ("http", "https") and source.netloc
+
+    @classmethod
+    def _parse(cls, source):
+        """
+        Parse a data file source argument into an urllib.parse.ParseResult instance.
+        """
+        return urllib.parse.urlparse(str(source)) if source else None
+
+
+class ConfigFile(BaseFile):
+    """
+    Configuration file for making Provider API requests.
+    """
+
+    def __init__(self, path=None, provider=None, **kwargs):
+        """
+        Parameters:
+            path: str, Path, optional
+                A path to a configuration file.
+
+            provider: str, UUID, Provider, optional
+                An identifier (name, id) for a provider; or a Provider instance. Used to key
+                configuration data in a dict.
+        """
+        super().__init__(path, **kwargs)
+
+        self._config_path = None
+        self._provider = None
+
+        # did we get a single file path or a provider?
+        if len(self._sources) == 1:
+            if self._isfile(self._sources[0]):
+                self._config_path = Path(self._sources[0].path)
+            else:
+                self._provider = self._sources[0].path
+        # figure out which is the path and which is the provider
+        elif len(self._sources) == 2:
+            self._config_path = [s for s in self._sources if self._isfile(s)][0]
+            self._provider = [s for s in self._sources if not self._isfile(s)][0]
+
+        # read from the config file
+        if self._config_path:
+            config = json.load(self._config_path.open())
+
+            if provider in config:
+                config = config[provider]
+                self._provider = provider
+            elif isinstance(provider, Provider) and provider.provider_id in config:
+                config = config[provider.provider_id]
+                self._provider = provider.provider_id
+            elif isinstance(provider, Provider) and provider.provider_name in config:
+                config = config[provider.provider_name]
+                self._provider = provider.provider_name
+
+            for k,v in config.items():
+                setattr(self, k, v)
+
+        # set default attributes
+        else:
+            defaults = [("auth_type", "Bearer"), ("headers", {}), ("mds_version", Version.mds_lower()), ("mds_api_suffix", None)]
+            for _field, _default in defaults:
+                setattr(self, _field, _default)
+
+        # finally, set from keyword args
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    def __repr__(self):
+        return f"<mds.files.ConfigFile ('{self._config_path}')>"
+
+    def dump(self, path=None, provider=None, **kwargs):
+        """
+        Convert this instance back into a configuration dict.
+
+        Parameters:
+            path: str, Path, optional
+                The path to write the configuration data.
+
+            provider: str, UUID, Provider, optional
+                An identifier (name, id) for a provider; or a Provider instance. Used to key
+                configuration data in a dict.
+
+            Additional keyword arguments are passed-through to json.dump().
+
+        Return:
+            dict
+                With no path information, return a dict of configuration.
+
+            ConfigFile
+                With path information, dump configuration to file path and return this instance.
+        """
+        provider = provider or self._provider
+        dump = dict([(k,v) for k,v in vars(self).items() if not k.startswith("_")])
+
+        if provider:
+            if isinstance(provider, Provider):
+                provider = provider.provider_name
+            dump = dict([(provider, dump)])
+
+        if path:
+            json.dump(dump, Path(path).open("w"), cls=JsonEncoder, **kwargs)
+            return self
+
+        return dump
+
+
+class DataFile(BaseFile):
     """
     Work with data in MDS Provider JSON files.
     """
 
     def __init__(self, record_type=None, *sources, **kwargs):
         """
-        Initialize a new ProviderDataFiles instance.
-
         Parameters:
             record_type: str, optional
                 The type of MDS Provider record ("status_changes" or "trips") to use by default.
@@ -42,16 +198,15 @@ class ProviderDataFiles():
                 A function that receives a list of urllib.parse.ParseResult, and returns the
                 complete list of file Path objects and URL str to be read.
         """
+        super().__init__(*sources, **kwargs)
+
         self.record_type = None
-        self.sources = []
 
         if record_type:
             if record_type in SCHEMA_TYPES:
                 self.record_type = record_type
             else:
-                self.sources.append(self._parse(record_type))
-
-        self.sources.extend([self._parse(s) for s in sources])
+                self._sources.append(self._parse(record_type))
 
         file_name = kwargs.get("file_name", self._filename)
         if isinstance(file_name, str):
@@ -63,7 +218,7 @@ class ProviderDataFiles():
 
     def __repr__(self):
         return "".join((
-            f"<mds.files.ProviderDataFiles (",
+            f"<mds.files.DataFile (",
             ", ".join([f"'{s}'" for s in [self.record_type]]),
             ")>"
         ))
@@ -72,7 +227,7 @@ class ProviderDataFiles():
         """
         Get a default Path object for dumping data files.
         """
-        dirs = [s.path for s in self.sources if self._isdir(s)]
+        dirs = [s.path for s in self._sources if self._isdir(s)]
         return Path(dirs[0]) if len(dirs) == 1 else Path(".")
 
     def _record_type_or_raise(self, record_type):
@@ -84,13 +239,6 @@ class ProviderDataFiles():
         if record_type in SCHEMA_TYPES:
             return record_type
         raise ValueError(f"A valid record type must be specified. Got {record_type}")
-
-    @property
-    def valid_sources(self):
-        """
-        True if this ProviderDataFiles references one or more valid file sources.
-        """
-        return all([self._isfile(s) or self._isurl(s) for s in self.sources])
 
     def dump_payloads(self, record_type=None, *payloads, **kwargs):
         """
@@ -307,7 +455,7 @@ class ProviderDataFiles():
             record_type = None
 
         if len(sources) == 0:
-            sources.extend(self.sources)
+            sources.extend(self._sources)
 
         if len(sources) == 0:
             raise IndexError("There are no sources to read from.")
@@ -465,29 +613,6 @@ class ProviderDataFiles():
         return f"{'_'.join(providers)}_{record_type}_{start.strftime(fmt)}_{end.strftime(fmt)}{extension}"
 
     @classmethod
-    def _isdir(cls, source):
-        """
-        Return True if source is a valid directory that exists.
-        """
-        path = Path(source.path)
-        return not cls._isfile(source) and path.is_dir() and path.exists()
-
-    @classmethod
-    def _isfile(cls, source):
-        """
-        Return True if path is a valid file that exists.
-        """
-        path = Path(source.path)
-        return not cls._isurl(source) and path.is_file() and path.exists()
-
-    @classmethod
-    def _isurl(cls, source):
-        """
-        Return True if source is a valid URL.
-        """
-        return source.scheme in ("http", "https") and source.netloc
-
-    @classmethod
     def _ls(cls, sources):
         """
         Create a tuple of lists of valid file Paths and URLs from a list of urllib.parse.ParseResult.
@@ -501,16 +626,3 @@ class ProviderDataFiles():
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
         return files, urls
-
-    @classmethod
-    def _parse(cls, source):
-        """
-        Parse a data file source argument into an urllib.parse.ParseResult instance.
-        """
-        return urllib.parse.urlparse(str(source))
-
-    @classmethod
-    def _unparse(cls, parsed):
-        """
-        Convert a urllib.parse.ParseResult instance back into for usable for reading.
-        """
