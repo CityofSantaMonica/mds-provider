@@ -1,5 +1,5 @@
 """
-MDS Provider API client implementation. 
+MDS Provider API client implementation.
 """
 
 import time
@@ -20,8 +20,6 @@ class Client():
 
     def __init__(self, provider=None, **kwargs):
         """
-        Initialize a new ProviderClient object.
-
         Parameters:
             provider: str, UUID, Provider, optional
                 Provider instance or identifier that this client queries by default.
@@ -32,23 +30,27 @@ class Client():
             version: str, Version, optional
                 The MDS version to target. By default, use Version.mds_lower().
         """
-        self.config = kwargs.pop("config", None)
+        self.config = kwargs.pop("config", {})
         if isinstance(self.config, ConfigFile):
             self.config = self.config.dump()
 
-        if provider:
-            provider = provider.provider_name if isinstance(provider, Provider) else provider
-            self.provider = Provider(provider, **self.config)
-
-        self.version = Version(kwargs.pop("version", self.provider.version or Version.mds_lower()))
-
+        # look for version first in config, then kwargs, then use default
+        self.version = Version(self.config.pop("version", kwargs.pop("version", Version.mds_lower())))
         if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
 
         self.encoder = self._encoder_or_raise(self.version)
+        self.provider = None
+
+        if provider:
+            self.provider = Provider(provider, ref=self.version, **self.config)
 
     def __repr__(self):
-        return f"<mds.api.ProviderClient ('{self.version}', '{self.provider.provider_name}')>"
+        data = [str(self.version)]
+        if self.provider:
+            data.append(self.provider.provider_name)
+        data = "'" + "', '".join(data) + "'"
+        return f"<mds.api.Client ({data})>"
 
     def _date_format(self, dt, version=None):
         """
@@ -63,28 +65,22 @@ class Client():
         else:
             return self._encoder_or_raise(version).encode(dt)
 
-    def _media_type_version_header(self):
+    def _media_type_version_header(self, version):
         """
         The custom MDS media-type and version header, using this client's version
         """
-        return f"application/vnd.mds.provider+json;version={self.version.header}"
+        return "Accept", f"application/vnd.mds.provider+json;version={version.header}"
 
-    def _provider_or_raise(self, provider, config):
+    def _provider_or_raise(self, provider, **kwargs):
         """
         Get a Provider instance from the argument, self, or raise an error.
         """
         provider = provider or self.provider
 
         if provider is None:
-            raise ValueError("Provider instance not found for this ProviderClient.")
+            raise ValueError("Provider instance not found for this Client.")
 
-        if isinstance(provider, Provider):
-            provider = provider.provider_name
-
-        if instance(config, ConfigFile):
-            config = config.dump()
-
-        return Provider(provider, **config)
+        return Provider(provider, **kwargs)
 
     def get(self, record_type, provider=None, **kwargs):
         """
@@ -136,7 +132,7 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         config = kwargs.pop("config", self.config)
-        provider = self._provider_or_raise(provider, config)
+        provider = self._provider_or_raise(provider, **config)
         paging = bool(kwargs.pop("paging", True))
         rate_limit = int(kwargs.pop("rate_limit", 0))
         version = Version(kwargs.pop("version", self.version))
@@ -160,6 +156,11 @@ class Client():
             **times,
             **kwargs
         }
+
+        if not hasattr(provider, "headers"):
+            setattr(provider, "headers", {})
+
+        provider.headers.update(dict([(self._media_type_version_header(version))]))
 
         # request
         return self._request(provider, record_type, params, paging, rate_limit)
@@ -259,33 +260,6 @@ class Client():
         return self.get(TRIPS, provider, **kwargs)
 
     @staticmethod
-    def _build_url(provider, record_type):
-        """
-        Build an API url for a provider's endpoint.
-        """
-        url = [provider.mds_api_url]
-
-        if hasattr(provider, "mds_api_suffix"):
-            url.append(getattr(provider, "mds_api_suffix").rstrip("/"))
-
-        url.append(record_type)
-
-        return "/".join(url)
-
-    @staticmethod
-    def _describe(res):
-        """
-        Prints details about the given response.
-        """
-        print(f"Requested {res.url}, Response Code: {res.status_code}")
-        print("Response Headers:")
-        for k,v in res.headers.items():
-            print(f"{k}: {v}")
-
-        if r.status_code is not 200:
-            print(r.text)
-
-    @staticmethod
     def _encoder_or_raise(version):
         """
         Gets a TimestampEncoder instance for the given version, if supported.
@@ -296,30 +270,13 @@ class Client():
             raise UnsupportedVersionError(version)
 
     @staticmethod
-    def _has_data(page, record_type):
-        """
-        Checks if this page has a "data" property with a non-empty payload.
-        """
-        data = page["data"] if "data" in page else {"__payload__": []}
-        payload = data[record_type] if record_type in data else []
-        print(f"Got payload with {len(payload)} {record_type}")
-        return len(payload) > 0
-
-    @staticmethod
-    def _next_url(page):
-        """
-        Gets the next URL or None from page.
-        """
-        return page["links"].get("next") if "links" in page else None
-
-    @staticmethod
     def _request(provider, record_type, params, paging, rate_limit):
         """
         Send one or more requests to a provider's endpoint.
 
         Returns a list of payloads, with length corresponding to the number of non-empty responses.
         """
-        url = Client._build_url(provider, record_type)
+        url = provider.endpoints[record_type]
         results = []
 
         # establish an authenticated session
@@ -372,4 +329,34 @@ class Client():
             if getattr(auth_type, "can_auth")(provider):
                 return auth_type(provider).session
 
-        raise ValueError(f"Couldn't find a supported auth type for {provider}")
+        raise ValueError(f"A supported auth type for {provider.provider_name} could not be found.")
+
+    @staticmethod
+    def _describe(res):
+        """
+        Prints details about the given response.
+        """
+        print(f"Requested {res.url}, Response Code: {res.status_code}")
+        print("Response Headers:")
+        for k,v in res.headers.items():
+            print(f"{k}: {v}")
+
+        if res.status_code is not 200:
+            print(res.text)
+
+    @staticmethod
+    def _has_data(page, record_type):
+        """
+        Checks if this page has a "data" property with a non-empty payload.
+        """
+        data = page["data"] if "data" in page else {"__payload__": []}
+        payload = data[record_type] if record_type in data else []
+        print(f"Got payload with {len(payload)} {record_type}")
+        return len(payload) > 0
+
+    @staticmethod
+    def _next_url(page):
+        """
+        Gets the next URL or None from page.
+        """
+        return page["links"].get("next") if "links" in page else None
