@@ -21,7 +21,7 @@ from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
 from .versions import UnexpectedVersionError, Version
 
 
-class BaseFile:
+class BaseFile():
     """
     Base class for working with Provider files.
     """
@@ -98,39 +98,39 @@ class ConfigFile(BaseFile):
         super().__init__(path, **kwargs)
 
         self._config_path = None
-        self._provider = None
 
         # did we get a single file path or a provider?
-        if len(self._sources) == 1:
-            if self._isfile(self._sources[0]):
-                self._config_path = Path(self._sources[0].path)
-            else:
-                self._provider = self._sources[0].path
-        # figure out which is the path and which is the provider
-        elif len(self._sources) == 2:
-            self._config_path = [s for s in self._sources if self._isfile(s)][0]
-            self._provider = [s for s in self._sources if not self._isfile(s)][0]
+        if len(self._sources) == 1 and self._isfile(self._sources[0]):
+            self._config_path = Path(self._sources[0].path)
 
         # read from the config file
         if self._config_path:
             config = json.load(self._config_path.open())
+            search = []
 
-            if provider in config:
-                config = config[provider]
-                self._provider = provider
-            elif isinstance(provider, Provider) and provider.provider_id in config:
-                config = config[provider.provider_id]
-                self._provider = provider.provider_id
-            elif isinstance(provider, Provider) and provider.provider_name in config:
-                config = config[provider.provider_name]
-                self._provider = provider.provider_name
+            # case-insensitive search in config
+            if isinstance(provider, Provider):
+                search.extend([
+                    str(provider.provider_id),
+                    provider.provider_name, provider.provider_name.capitalize(),
+                    provider.provider_name.lower(), provider.provider_name.upper()
+                ])
+            elif provider:
+                search.extend([
+                    provider, provider.lower(), provider.capitalize(), provider.upper()
+                ])
+
+            for s in set(search):
+                if s in config:
+                    config = config.pop(s)
+                    break
 
             for k,v in config.items():
                 setattr(self, k, v)
 
         # set default attributes
         else:
-            defaults = [("auth_type", "Bearer"), ("headers", {}), ("mds_version", Version.mds_lower()), ("mds_api_suffix", None)]
+            defaults = [("auth_type", "Bearer"), ("headers", {}), ("version", Version.mds_lower()), ("mds_api_suffix", None)]
             for _field, _default in defaults:
                 setattr(self, _field, _default)
 
@@ -162,8 +162,7 @@ class ConfigFile(BaseFile):
             ConfigFile
                 With path information, dump configuration to file path and return this instance.
         """
-        provider = provider or self._provider
-        dump = dict([(k,v) for k,v in vars(self).items() if not k.startswith("_")])
+        dump = vars(self)
 
         if provider:
             if isinstance(provider, Provider):
