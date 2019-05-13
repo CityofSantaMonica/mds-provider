@@ -82,7 +82,7 @@ class BaseFile():
 
 class ConfigFile(BaseFile):
     """
-    Configuration file for making Provider API requests.
+    Work with Provider configuration data in JSON files.
     """
 
     def __init__(self, path=None, provider=None, **kwargs):
@@ -178,7 +178,7 @@ class ConfigFile(BaseFile):
 
 class DataFile(BaseFile):
     """
-    Work with data in MDS Provider JSON files.
+    Work with Provider payload data in JSON files.
     """
 
     def __init__(self, record_type=None, *sources, **kwargs):
