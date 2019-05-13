@@ -71,7 +71,7 @@ class JsonEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class TimestampEncoder:
+class TimestampEncoder():
     """
     Version-aware encoder for MDS timestamps.
     """
@@ -110,18 +110,18 @@ class TimestampEncoder:
         """
         if self.date_format == "unix":
             if self.version < Version("0.3.0"):
-                return str(obj.timestamp())
+                return str(int(data.timestamp()))
             else:
-                return str(int(round(obj.timestamp() * 1000)))
+                return str(int(round(data.timestamp() * 1000)))
         elif self.date_format == "iso8601":
-            return obj.isoformat()
+            return data.isoformat()
         elif self.date_format is not None:
-            return obj.strftime(self.date_format)
+            return data.strftime(self.date_format)
         else:
-            return str(obj)
+            return str(int(data))
 
 
-class TimestampDecoder:
+class TimestampDecoder():
     """
     Version-aware decoder for MDS timestamps.
     """

@@ -141,11 +141,12 @@ class Client():
 
         times = {}
         # the querystring for status_changes and trips < 0.3.0
-        start, end = kwargs.pop("start_time", None), kwargs.pop("end_time", None)
+        start = kwargs.pop("start_time", None)
+        end = kwargs.pop("end_time", None)
 
         if record_type == STATUS_CHANGES or version < Version("0.3.0"):
-            times["start_time"] = start
-            times["end_time"] = end
+            times["start_time"] = self._date_format(start)
+            times["end_time"] = self._date_format(end)
         else:
             # set to the new querystring arg, but allow use of either new or old
             times["min_end_time"] = self._date_format(kwargs.pop("min_end_time", start), version=version)
@@ -289,13 +290,12 @@ class Client():
             Client._describe(r)
             return results
 
-        this_page = r.json()
-
-        if Client._has_data(this_page, record_type):
-            results.append(this_page)
+        payload = r.json()
+        if Client._has_data(payload, record_type):
+            results.append(payload)
 
         # get subsequent pages of data
-        next_url = Client._next_url(this_page)
+        next_url = Client._next_url(payload)
         while paging and next_url:
             r = session.get(next_url)
 
@@ -303,12 +303,11 @@ class Client():
                 Client._describe(r)
                 break
 
-            this_page = r.json()
+            payload = r.json()
+            if Client._has_data(payload, record_type):
+                results.append(payload)
 
-            if Client._has_data(this_page, record_type):
-                results.append(this_page)
-
-            next_url = Client._next_url(this_page)
+            next_url = Client._next_url(payload)
 
             if next_url and rate_limit:
                 time.sleep(rate_limit)
