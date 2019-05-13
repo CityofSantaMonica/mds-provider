@@ -13,7 +13,7 @@ from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
 
 
-class DataFrame:
+class DataFrame():
     """
     A data loader for pandas.DataFrame instances.
 
