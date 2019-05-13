@@ -20,7 +20,7 @@ EVENT_TIME = "event_time"
 PROPULSION = "propulsion_type"
 
 
-class ProviderDataGenerator:
+class ProviderDataGenerator():
     """
     Generates fake MDS Provider data.
     """
