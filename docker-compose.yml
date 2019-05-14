@@ -1,0 +1,16 @@
+version: "3.7"
+services:
+  docs:
+    build: .
+    working_dir: /usr/src/mds
+    depends_on:
+      - nginx
+    command: pipenv run make html
+    volumes:
+      - .:/usr/src/mds
+  nginx:
+    image: nginx:latest
+    ports:
+      - 8000:80
+    volumes:
+      - ./docs/_build/html:/usr/share/nginx/html

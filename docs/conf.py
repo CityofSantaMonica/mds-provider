@@ -23,11 +23,11 @@ project = 'mds-provider'
 copyright = '2018, City of Santa Monica'
 author = 'City of Santa Monica'
 
-import mds
+import mds.versions
 # The short X.Y version
-version = mds.VERSION()
+version = mds.Version.library().header
 # The full version, including alpha/beta/rc tags
-release = mds.VERSION()
+release = str(mds.Version.library())
 
 
 # -- General configuration ---------------------------------------------------

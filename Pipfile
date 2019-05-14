@@ -3,14 +3,12 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[packages]
-
 [dev-packages]
-sphinx = "*"
+mds-provider = {path = ".", editable = true}
 recommonmark = "*"
 requests = "*"
+sphinx = "*"
 sphinx-rtd-theme = "*"
-mds-provider = {path = "."}
 
 [requires]
 python_version = "3.6"

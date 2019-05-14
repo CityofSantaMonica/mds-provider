@@ -72,7 +72,31 @@ db.load_trips(trips)
 | [`mds.schemas`](mds/schemas.py) | Validate data using the [JSON schemas][schemas] |
 | [`mds.versions`](mds/versions.py) | Work with [MDS versions][versions] |
 
+## Generating documentation
+
+`mds-provider` uses [Sphinx][sphinx] for documentation generation. We provide a minimal Docker setup for building and
+serving documentation locally:
+
+```bash
+docker-compose run [--rm] docs
+```
+
+After the first-time image build, and subsequent Sphinx build(s), view the docs at http://localhost:8000
+
+To rebuild after a code change, run the command again:
+
+```bash
+docker-compose run [--rm] docs
+```
+
+To bring down the local server:
+
+```bash
+docker-compose down
+```
+
 [provider]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider
 [registry]: https://github.com/CityofLosAngeles/mobility-data-specification/blob/master/providers.csv
 [schemas]: https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/generate_schema
+[sphinx]: http://www.sphinx-doc.org/en/stable/
 [versions]: https://github.com/CityofLosAngeles/mobility-data-specification/releases
