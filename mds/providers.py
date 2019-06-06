@@ -1,10 +1,12 @@
 """
 Work with Providers from the registry.
 """
+import csv
+import uuid
 
-from uuid import UUID
+import requests
 
-from mds import github
+import mds.github
 from .schemas import STATUS_CHANGES, TRIPS
 from .versions import Version
 
@@ -14,7 +16,7 @@ class Provider():
     A simple model for an entry in a Provider registry.
     """
 
-    def __init__(self, identifier=None, ref=github.MDS_DEFAULT_REF, path=None, **kwargs):
+    def __init__(self, identifier=None, ref=mds.github.MDS_DEFAULT_REF, path=None, **kwargs):
         """
         Initialize a new Provider instance.
 
@@ -50,7 +52,7 @@ class Provider():
             self.provider_name = kwargs.pop("provider_name", None)
 
             provider_id = kwargs.pop("provider_id", None)
-            self.provider_id = provider_id if isinstance(provider_id, UUID) else UUID(provider_id)
+            self.provider_id = provider_id if isinstance(provider_id, uuid.UUID) else uuid.UUID(provider_id)
 
             self.auth_type = kwargs.pop("auth_type", "Bearer")
             self.gbfs_api_url = self._clean_url(kwargs.pop("gbfs_api_url", None))
@@ -116,7 +118,7 @@ class Registry():
 
     _registry = {}
 
-    def __init__(self, ref=github.MDS_DEFAULT_REF, path=None, **kwargs):
+    def __init__(self, ref=mds.github.MDS_DEFAULT_REF, path=None, **kwargs):
         """
         Parameters:
             ref: str, Version
@@ -153,14 +155,14 @@ class Registry():
                 The matching Provider instance, or None.
         """
         try:
-            provider = UUID(provider)
+            provider = uuid.UUID(provider)
         except ValueError:
             pass
 
         # filter for matching provider(s)
         found = next((p for p in self.providers if any([
             isinstance(provider, str) and p.provider_name.lower() == provider.lower(),
-            isinstance(provider, UUID) and p.provider_id == provider
+            isinstance(provider, uuid.UUID) and p.provider_id == provider
         ])), None)
 
         # re-init with the record from registry and config
@@ -173,7 +175,7 @@ class Registry():
             with path.open("r") as f:
                 return Registry._parse_csv(f.readlines(), ref=ref, path=path)
         else:
-            url = github.registry_url(ref)
+            url = mds.github.registry_url(ref)
             with requests.get(url, stream=True) as r:
                 lines = (line.decode("utf-8").replace(", ", ",") for line in r.iter_lines())
                 return Registry._parse_csv(lines, ref=ref, path=path)

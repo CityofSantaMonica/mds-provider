@@ -2,8 +2,8 @@
 MDS Provider API client implementation.
 """
 
+import datetime
 import time
-from datetime import datetime
 
 from ..encoding import TimestampEncoder
 from ..files import ConfigFile
@@ -58,7 +58,7 @@ class Client():
         """
         if dt is None:
             return None
-        if not isinstance(dt, datetime):
+        if not isinstance(dt, datetime.datetime):
             return int(dt)
         if version is None or version == self.version:
             return self.encoder.encode(dt)

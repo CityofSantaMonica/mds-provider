@@ -7,7 +7,8 @@ import os
 import jsonschema
 import requests
 
-from mds import github, geometry
+import mds.geometry
+import mds.github
 from .versions import UnsupportedVersionError, Version
 
 
@@ -41,7 +42,7 @@ class Schema():
 
         # acquire the schema
         self.schema_type = schema_type
-        self.ref = ref or github.MDS_DEFAULT_REF
+        self.ref = ref or mds.github.MDS_DEFAULT_REF
 
         try:
             self.ref = Version(self.ref)
@@ -51,7 +52,7 @@ class Schema():
             if isinstance(self.ref, Version) and self.ref.unsupported:
                 raise UnsupportedVersionError(self.ref)
 
-        self.schema_url = github.schema_url(schema_type, self.ref)
+        self.schema_url = mds.github.schema_url(schema_type, self.ref)
 
         try:
             from .files import DataFile
@@ -61,7 +62,7 @@ class Schema():
             raise ValueError(f"Problem requesting schema from: {self.schema_url}")
 
         # override the $id for a non-standard ref
-        if self.ref is not github.MDS_DEFAULT_REF:
+        if self.ref is not mds.github.MDS_DEFAULT_REF:
             self.schema["$id"] = self.schema_url
 
     def __repr__(self):
@@ -280,7 +281,7 @@ class DataValidationError():
         if self.schema_type == STATUS_CHANGES:
             snippet.extend([
                 f"  'event_time': '{item['event_time']}',",
-                f"  'event_location': '{geometry.extract_point(item['event_location'])}'"
+                f"  'event_location': '{mds.geometry.extract_point(item['event_location'])}'"
             ])
         elif self.schema_type == TRIPS:
             snippet.extend([
