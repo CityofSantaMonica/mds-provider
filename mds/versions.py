@@ -4,7 +4,7 @@ Work with MDS versions.
 
 import sys
 
-from packaging.version import LegacyVersion, parse
+import packaging.version
 
 
 __version__ = "0.4.0"
@@ -57,31 +57,34 @@ class Version():
         if not isinstance(version, str):
             raise TypeError("version")
 
-        self._version = parse(version)
+        self._version = self._parse(version)
         self._legacy = None
 
-        if isinstance(self._version, LegacyVersion):
+        if isinstance(self._version, packaging.version.LegacyVersion):
             # versions like "0.3.x" or "0.x"
             try:
                 # assume the highest PATCH support
                 major, minor, legacy = str(self._version).split(".")
-                self._version = parse(f"{major}.{minor}.{sys.maxsize}")
+                self._version = self._parse(f"{major}.{minor}.{sys.maxsize}")
                 # note the highest valid version tuple index, and the "legacy" data
                 self._legacy = (1, legacy)
             except:
                 # assume the highest MINOR.PATCH support
                 major, legacy = str(self._version).split(".")
-                self._version = parse(f"{major}.{sys.maxsize}.{sys.maxsize}")
+                self._version = self._parse(f"{major}.{sys.maxsize}.{sys.maxsize}")
                 # note the highest valid version tuple index, and the "legacy" data
                 self._legacy = (0, legacy)
         elif len(self.tuple) < 2:
             # MAJOR only versions like "0", "1"
-            self._version = parse(f"{self.tuple[0]}.{sys.maxsize}.{sys.maxsize}")
+            self._version = self._parse(f"{self.tuple[0]}.{sys.maxsize}.{sys.maxsize}")
             self._legacy = (0, None)
         elif len(self.tuple) < 3:
             # MAJOR.MINOR only version like "0.3"
-            self._version = parse(f"{self.tuple[0]}.{self.tuple[1]}.{sys.maxsize}")
+            self._version = self._parse(f"{self.tuple[0]}.{self.tuple[1]}.{sys.maxsize}")
             self._legacy = (1, None)
+
+    def _parse(self, version):
+        return packaging.version.parse(version)
 
     def __repr__(self):
         if self._legacy:

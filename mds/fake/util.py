@@ -2,16 +2,14 @@
 Generating random data of miscellaneous types.
 """
 
-import json
+import datetime
 import random
 import string
-import uuid
-from datetime import datetime, timedelta
 
 
 def random_date_from(date,
-                     min_td=timedelta(seconds=0),
-                     max_td=timedelta(seconds=0)):
+                     min_td=datetime.timedelta(seconds=0),
+                     max_td=datetime.timedelta(seconds=0)):
     """
     Produces a datetime at a random offset from date.
 
@@ -32,7 +30,7 @@ def random_date_from(date,
     min_s = min(min_td.total_seconds(), max_td.total_seconds())
     max_s = max(min_td.total_seconds(), max_td.total_seconds())
     offset = random.uniform(min_s, max_s)
-    return date + timedelta(seconds=offset)
+    return date + datetime.timedelta(seconds=offset)
 
 
 def random_string(k, chars=None):

@@ -11,7 +11,7 @@ See [`mds-provider-services`](https://github.com/CityofSantaMonica/mds-provider-
 Install with `pip`:
 
 ```bash
-pip install -e git+https://github.com/CityofSantaMonica/mds-provider@master#egg=mds_provider
+pip install -e git+https://github.com/CityofSantaMonica/mds-provider@master#egg=mds-provider
 ```
 
 Or with `python` directly:

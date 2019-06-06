@@ -3,18 +3,16 @@ Work with MDS Provider data in JSON files.
 """
 
 import csv
+import datetime
 import hashlib
 import json
 import os
+import pathlib
 import urllib
-from datetime import datetime, timedelta
-from pathlib import Path
-from uuid import UUID
 
-import pandas as pd
 import requests
+import pandas as pd
 
-from mds import github
 from .encoding import JsonEncoder
 from .providers import Provider
 from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
@@ -54,7 +52,7 @@ class BaseFile():
         """
         Return True if source is a valid directory that exists.
         """
-        path = Path(source.path)
+        path = pathlib.Path(source.path)
         return not cls._isfile(source) and path.is_dir() and path.exists()
 
     @classmethod
@@ -62,7 +60,7 @@ class BaseFile():
         """
         Return True if path is a valid file that exists.
         """
-        path = Path(source.path)
+        path = pathlib.Path(source.path)
         return not cls._isurl(source) and path.is_file() and path.exists()
 
     @classmethod
@@ -101,7 +99,7 @@ class ConfigFile(BaseFile):
 
         # did we get a single file path or a provider?
         if len(self._sources) == 1 and self._isfile(self._sources[0]):
-            self._config_path = Path(self._sources[0].path)
+            self._config_path = pathlib.Path(self._sources[0].path)
 
         # read from the config file
         if self._config_path:
@@ -170,7 +168,7 @@ class ConfigFile(BaseFile):
             dump = dict([(provider, dump)])
 
         if path:
-            json.dump(dump, Path(path).open("w"), cls=JsonEncoder, **kwargs)
+            json.dump(dump, pathlib.Path(path).open("w"), cls=JsonEncoder, **kwargs)
             return self
 
         return dump
@@ -230,7 +228,7 @@ class DataFile(BaseFile):
         Get a default Path object for dumping data files.
         """
         dirs = [s.path for s in self._sources if self._isdir(s)]
-        return Path(dirs[0]) if len(dirs) == 1 else Path(".")
+        return pathlib.Path(dirs[0]) if len(dirs) == 1 else pathlib.Path(".")
 
     def _record_type_or_raise(self, record_type):
         """
@@ -310,7 +308,7 @@ class DataFile(BaseFile):
         if len(sources) == 0:
             return None
 
-        output_dir = Path(kwargs.pop("output_dir", self._default_dir()))
+        output_dir = pathlib.Path(kwargs.pop("output_dir", self._default_dir()))
         single_file = kwargs.pop("single_file", True)
 
         file_name = kwargs.pop("file_name", self.file_name)
@@ -324,7 +322,7 @@ class DataFile(BaseFile):
             # generate a file name for the list of payloads
             fname = file_name(record_type=record_type, payloads=sources, extension=".json")
             print(fname)
-            path = Path(output_dir, fname)
+            path = pathlib.Path(output_dir, fname)
             # dump the single payload or a list of payloads
             with path.open("w") as fp:
                 if dict_source and len(sources) == 1:
@@ -337,13 +335,13 @@ class DataFile(BaseFile):
         for payload in sources:
             # generate a file name for this payload
             fname = file_name(record_type=record_type, payloads=sources, extension=".json", payload=payload)
-            path = Path(output_dir, fname)
+            path = pathlib.Path(output_dir, fname)
             if sources.index(payload) > 0 and path.exists():
                 # increment the file number
                 n = str(sources.index(payload))
                 # pad with number of zeros based on how many items in the list
                 nz = len(str(len(sources)))
-                path = Path(str(path).replace(".json", f"_{n.zfill(nz)}.json"))
+                path = pathlib.Path(str(path).replace(".json", f"_{n.zfill(nz)}.json"))
             # dump the payload dict
             with path.open("w") as fp:
                 json.dump(payload, fp, **kwargs)
@@ -597,17 +595,17 @@ class DataFile(BaseFile):
         time_key = "event_time" if record_type == STATUS_CHANGES else "start_time"
         times = [int(d[time_key]) for p in payloads for d in p["data"][record_type]]
         try:
-            start = datetime.utcfromtimestamp(min(times))
-            end = datetime.utcfromtimestamp(max(times))
+            start = datetime.datetime.utcfromtimestamp(min(times))
+            end = datetime.datetime.utcfromtimestamp(max(times))
         except:
-            start = datetime.utcfromtimestamp(min(times) / 1000)
-            end = datetime.utcfromtimestamp(max(times) / 1000)
+            start = datetime.datetime.utcfromtimestamp(min(times) / 1000)
+            end = datetime.datetime.utcfromtimestamp(max(times) / 1000)
 
         # clip to hour of day, offset if they are the same
         start = datetime(start.year, start.month, start.day, start.hour)
         end = datetime(end.year, end.month, end.day, end.hour)
         if start == end:
-            end = end + timedelta(hours=1)
+            end = end + datetime.timedelta(hours=1)
 
         fmt = "%Y%m%dT%H0000Z"
         providers = set([d["provider_name"] for p in payloads for d in p["data"][record_type]])
@@ -620,8 +618,8 @@ class DataFile(BaseFile):
         Create a tuple of lists of valid file Paths and URLs from a list of urllib.parse.ParseResult.
         """
         # separate into files and directories and urls
-        files = [Path(f.path) for f in sources if cls._isfile(f)]
-        dirs = [Path(d.path) for d in sources if cls._isdir(d)]
+        files = [pathlib.Path(f.path) for f in sources if cls._isfile(f)]
+        dirs = [pathlib.Path(d.path) for d in sources if cls._isdir(d)]
         urls = [urllib.parse.urlunparse(u) for u in sources if cls._isurl(u)]
 
         # expand into directories

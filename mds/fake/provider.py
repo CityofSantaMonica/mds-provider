@@ -2,14 +2,13 @@
 Generating fake MDS Provider data.
 """
 
+import datetime
 import math
 import random
 import uuid
-from datetime import datetime, timedelta
 
 import scipy.stats
 
-from mds import geometry
 from ..schemas import Schema
 from ..fake import util
 from ..versions import Version
@@ -25,7 +24,7 @@ class ProviderDataGenerator():
     Generates fake MDS Provider data.
     """
 
-    TD_HOUR = timedelta(seconds=3600)
+    TD_HOUR = datetime.timedelta(seconds=3600)
 
     def __init__(self, boundary, **kwargs):
         """
@@ -273,7 +272,7 @@ class ProviderDataGenerator():
 
         # device placement starts before operation open time
         # -7200 seconds == previous 2 hours from start
-        offset = timedelta(seconds=-7200)
+        offset = datetime.timedelta(seconds=-7200)
         for device in devices:
             # somewhere in the previous :offset:
             event_time = random_date_from(start_time, min_td=offset)
@@ -319,7 +318,7 @@ class ProviderDataGenerator():
 
         # device pickup likely doesn't happen right at close time
         # +7200 seconds == next 2 hours after close
-        offset = timedelta(seconds=7200)
+        offset = datetime.timedelta(seconds=7200)
         for device in devices:
             # somewhere in the next :offset:
             event_time = random_date_from(end_time, max_td=offset)
@@ -346,8 +345,8 @@ class ProviderDataGenerator():
         return status_changes
 
     def device_trip(self, device, event_time=None, event_location=None,
-                    end_location=None, reference_time=None, min_td=timedelta(seconds=0),
-                    max_td=timedelta(seconds=0), speed=None):
+                    end_location=None, reference_time=None, min_td=datetime.timedelta(seconds=0),
+                    max_td=datetime.timedelta(seconds=0), speed=None):
         """
         Create a trip and associated status_changes for a device.
 
@@ -412,7 +411,7 @@ class ProviderDataGenerator():
             self.drain_battery(device, amount=amount, rate=rate)
 
         # calculate out the ending time and location
-        end_time = event_time + timedelta(seconds=trip_duration)
+        end_time = event_time + datetime.timedelta(seconds=trip_duration)
         if end_location is None:
             start_point = extract_point(event_location)
             end_point = point_nearby(start_point, trip_distance, boundary=self.boundary)
@@ -583,11 +582,11 @@ class ProviderDataGenerator():
         status_changes = []
 
         for device in devices:
-            if isinstance(event_times, datetime):
+            if isinstance(event_times, datetime.datetime):
                 # how many seconds until the next hour?
                 diff = (60 - event_times.minute - 1)*60 + (60 - event_times.second)
                 # random datetime between event_times and then
-                event_time = random_date_from(event_times, max_td=timedelta(seconds=diff))
+                event_time = random_date_from(event_times, max_td=datetime.timedelta(seconds=diff))
             elif len(event_times) == len(devices):
                 # corresponding datetime
                 event_time = event_times[devices.index(device)]

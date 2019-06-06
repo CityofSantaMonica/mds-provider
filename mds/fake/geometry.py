@@ -6,7 +6,7 @@ import math
 import random
 
 import shapely.ops
-from shapely.geometry import Point
+import shapely.geometry
 
 
 def point_within(boundary):
@@ -26,8 +26,7 @@ def point_within(boundary):
 
     # helper computes a new random point
     def compute():
-        return Point(random.uniform(min_x, max_x),
-                     random.uniform(min_y, max_y))
+        return shapely.geometry.Point(random.uniform(min_x, max_x), random.uniform(min_y, max_y))
 
     # loop until we get an interior point
     point = compute()
@@ -79,7 +78,7 @@ def point_nearby(point, dist, bearing=None, boundary=None):
                                 math.cos(ang_dist) - math.sin(lat1) * math.sin(lat2))
 
         # return the new point
-        return Point(math.degrees(lon2), math.degrees(lat2))
+        return shapely.geometry.Point(math.degrees(lon2), math.degrees(lat2))
     else:
         MAX_TRIES = 50 if bearing is None else 1
 

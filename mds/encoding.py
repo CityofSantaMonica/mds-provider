@@ -3,14 +3,14 @@ Encoding and decoding MDS Provider data.
 """
 
 import json
-from datetime import datetime
-from pathlib import Path
-from uuid import UUID
+import datetime
+import pathlib
+import uuid
 
 import dateutil.parser
-from shapely.geometry import Point, Polygon
+import shapely.geometry
 
-from mds import geometry
+import mds.geometry
 from .versions import UnsupportedVersionError, Version
 
 
@@ -50,19 +50,19 @@ class JsonEncoder(json.JSONEncoder):
         """
         Implement serialization for some special types.
         """
-        if isinstance(obj, datetime):
+        if isinstance(obj, datetime.datetime):
             return self.timestamp_encoder.encode(obj)
 
-        if isinstance(obj, Path):
+        if isinstance(obj, pathlib.Path):
             return str(obj)
 
-        if isinstance(obj, Point) or isinstance(obj, Polygon):
-            return geometry.to_feature(obj)
+        if isinstance(obj, shapely.geometry.Point) or isinstance(obj, shapely.geometry.Polygon):
+            return mds.geometry.to_feature(obj)
 
         if isinstance(obj, tuple):
             return list(obj)
 
-        if isinstance(obj, UUID):
+        if isinstance(obj, uuid.UUID):
             return str(obj)
 
         if isinstance(obj, Version):
@@ -150,8 +150,8 @@ class TimestampDecoder():
         """
         try:
             if self.version < Version("0.3.0"):
-                return datetime.utcfromtimestamp(int(data))
+                return datetime.datetime.utcfromtimestamp(int(data))
             else:
-                return datetime.utcfromtimestamp(int(data / 1000.0))
+                return datetime.datetime.utcfromtimestamp(int(data / 1000.0))
         except:
             return dateutil.parser.parse(data)

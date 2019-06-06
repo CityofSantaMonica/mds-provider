@@ -1,21 +1,23 @@
-from pathlib import Path
+import pathlib
 import re
-from setuptools import find_packages, setup
+
+import setuptools
+
 
 __version__ = re.search(
     r"__version__ = ['\"]([^'\"]*)['\"]",
-    Path("mds", "versions.py").read_text()
+    pathlib.Path("mds", "versions.py").read_text()
     ).group(1)
 
-setup(
-    name="mds_provider",
+setuptools.setup(
+    name="mds-provider",
     version=__version__,
     description="Tools for working with Mobility Data Specification Provider data",
-    long_description=Path("README.md").read_text(),
+    long_description=pathlib.Path("README.md").read_text(),
     url="https://github.com/CityofSantaMonica/mds-provider",
     author="City of Santa Monica and contributors",
     license="MIT",
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
         "Fiona",
