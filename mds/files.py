@@ -471,7 +471,7 @@ class DataFile(BaseFile):
 
         # load from each file/URL pointer into a composite list
         data = []
-        data.extend([json.load(f.open(), **kwargs) for f in files])
+        data.extend([json.loads(f.read_text(), **kwargs) for f in files])
         data.extend([requests.get(u, headers=headers.get(u, headers)).json() for u in urls])
 
         # filter out payloads with non-matching record_type
