@@ -38,9 +38,13 @@ class JsonEncoder(json.JSONEncoder):
             version: str, Version, optional
                 The MDS version to target.
         """
-        self.date_format = kwargs.pop("date_format", "unix")
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        self.timestamp_encoder = TimestampEncoder(version=self.version)
+        if self.version.unsupported:
+            raise UnsupportedVersionError(self.version)
+
+        date_format = kwargs.pop("date_format", "unix")
+        self.timestamp_encoder = TimestampEncoder(date_format=date_format, version=self.version)
+
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
     def __repr__(self):
@@ -106,11 +110,11 @@ class TimestampEncoder():
                 Datetime to encode.
 
         Return:
-            datetime
+            str
         """
         if self.date_format == "unix":
             if self.version < Version("0.3.0"):
-                return str(int(data.timestamp()))
+                return str(data.timestamp())
             else:
                 return str(int(round(data.timestamp() * 1000)))
         elif self.date_format == "iso8601":
