@@ -9,9 +9,11 @@ import uuid
 
 import scipy.stats
 
+import mds.geometry
+from ..fake import geometry, util
 from ..schemas import Schema
-from ..fake import util
 from ..versions import Version
+
 
 BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
@@ -275,9 +277,9 @@ class ProviderDataGenerator():
         offset = datetime.timedelta(seconds=-7200)
         for device in devices:
             # somewhere in the previous :offset:
-            event_time = random_date_from(start_time, min_td=offset)
-            point = point_within(self.boundary)
-            feature = to_feature(point, properties=dict(timestamp=event_time))
+            event_time = util.random_date_from(start_time, min_td=offset)
+            point = geometry.point_within(self.boundary)
+            feature = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
 
             # the status_change details
             service_start = \
@@ -321,17 +323,17 @@ class ProviderDataGenerator():
         offset = datetime.timedelta(seconds=7200)
         for device in devices:
             # somewhere in the next :offset:
-            event_time = random_date_from(end_time, max_td=offset)
+            event_time = util.random_date_from(end_time, max_td=offset)
 
             # use the device's index for the locations if provided
             # otherwise generate a random event_location
             if locations is None:
-                point = point_within(self.boundary)
+                point = geometry.point_within(self.boundary)
             else:
-                point = extract_point(locations[devices.index(device)])
+                point = mds.geometry.extract_point(locations[devices.index(device)])
 
             # the status_change details
-            feature = to_feature(point, properties=dict(timestamp=event_time))
+            feature = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
             service_end = \
                 self.status_change_event(device,
                                          event_type="removed",
@@ -379,11 +381,11 @@ class ProviderDataGenerator():
             tuple (status_changes: list, trip: dict)
         """
         if (event_time is None) and (reference_time is not None):
-            event_time = random_date_from(reference_time, min_td=min_td, max_td=max_td)
+            event_time = util.random_date_from(reference_time, min_td=min_td, max_td=max_td)
 
         if event_location is None:
-            point = point_within(self.boundary)
-            event_location = to_feature(point, properties=dict(timestamp=event_time))
+            point = geometry.point_within(self.boundary)
+            event_location = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
 
         if speed is None:
             speed = self.speed
@@ -413,9 +415,9 @@ class ProviderDataGenerator():
         # calculate out the ending time and location
         end_time = event_time + datetime.timedelta(seconds=trip_duration)
         if end_location is None:
-            start_point = extract_point(event_location)
-            end_point = point_nearby(start_point, trip_distance, boundary=self.boundary)
-            end_location = to_feature(end_point, properties=dict(timestamp=end_time))
+            start_point = mds.geometry.extract_point(event_location)
+            end_point = geometry.point_nearby(start_point, trip_distance, boundary=self.boundary)
+            end_location = mds.geometry.to_feature(end_point, properties=dict(timestamp=end_time))
 
         # generate the route object
         route = self.trip_route(event_location, end_location)
@@ -433,7 +435,7 @@ class ProviderDataGenerator():
 
         # add a parking_verification_url?
         if random.choice([True, False]):
-            trip.update(parking_verification_url=random_file_url(device["provider_name"]))
+            trip.update(parking_verification_url=util.random_file_url(device["provider_name"]))
 
         # add a standard_cost?
         if random.choice([True, False]):
@@ -586,15 +588,15 @@ class ProviderDataGenerator():
                 # how many seconds until the next hour?
                 diff = (60 - event_times.minute - 1)*60 + (60 - event_times.second)
                 # random datetime between event_times and then
-                event_time = random_date_from(event_times, max_td=datetime.timedelta(seconds=diff))
+                event_time = util.random_date_from(event_times, max_td=datetime.timedelta(seconds=diff))
             elif len(event_times) == len(devices):
                 # corresponding datetime
                 event_time = event_times[devices.index(device)]
 
             if event_locations is None:
                 # random point
-                point = point_within(self.boundary)
-                event_location = to_feature(point, properties=dict(timestamp=event_time))
+                point = geometry.point_within(self.boundary)
+                event_location = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
             elif len(event_locations) == len(devices):
                 # corresponding location
                 event_location = event_locations[devices.index(device)]
@@ -700,7 +702,7 @@ class ProviderDataGenerator():
         """
         Craft the full MDS Provider payload for either status_changes or trips.
         """
-        payload = dict(version=mds.VERSION())
+        payload = dict(version=str(self.version))
 
         if status_changes is not None:
             payload["data"] = dict(status_changes=status_changes)
