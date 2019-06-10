@@ -114,7 +114,7 @@ class TimestampEncoder():
         """
         if self.date_format == "unix":
             if self.version < Version("0.3.0"):
-                return str(data.timestamp())
+                return str(int(data.timestamp()))
             else:
                 return str(int(round(data.timestamp() * 1000)))
         elif self.date_format == "iso8601":
