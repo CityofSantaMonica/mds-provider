@@ -29,7 +29,7 @@ def parse_boundary(boundary_file, **kwargs):
     if boundary_file.lower().startswith("http") and boundary_file.lower().endswith(".geojson"):
         r = requests.get(boundary_file)
         file_name = boundary_file.split("/")[-1]
-        path = file_name if output is None else os.path.join(output, file_name)
+        path = os.path.join(kwargs.get("output", "."), file_name)
 
         with open(path, "w") as f:
             json.dump(r.json(), f)
