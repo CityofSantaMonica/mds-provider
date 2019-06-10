@@ -319,20 +319,27 @@ class DataFile(BaseFile):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if single_file:
+            version = sources[0]["version"]
+            encoder = JsonEncoder(date_format="unix", version=version, **kwargs)
+
             # generate a file name for the list of payloads
             fname = file_name(record_type=record_type, payloads=sources, extension=".json")
             print(fname)
             path = pathlib.Path(output_dir, fname)
+
             # dump the single payload or a list of payloads
-            with path.open("w") as fp:
-                if dict_source and len(sources) == 1:
-                    json.dump(sources[0], fp, **kwargs)
-                else:
-                    json.dump(sources, fp, **kwargs)
+            if dict_source and len(sources) == 1:
+                path.write_text(encoder.encode(sources[0]))
+            else:
+                path.write_text(encoder.encode(sources))
+
             return path
 
         # multi-file
         for payload in sources:
+            version = payload["version"]
+            encoder = JsonEncoder(date_format="unix", version=version, **kwargs)
+
             # generate a file name for this payload
             fname = file_name(record_type=record_type, payloads=sources, extension=".json", payload=payload)
             path = pathlib.Path(output_dir, fname)
@@ -342,9 +349,9 @@ class DataFile(BaseFile):
                 # pad with number of zeros based on how many items in the list
                 nz = len(str(len(sources)))
                 path = pathlib.Path(str(path).replace(".json", f"_{n.zfill(nz)}.json"))
+
             # dump the payload dict
-            with path.open("w") as fp:
-                json.dump(payload, fp, **kwargs)
+            path.write_text(encoder.encode(payload))
 
         return output_dir
 
@@ -593,17 +600,22 @@ class DataFile(BaseFile):
 
         # find time boundaries from the data
         time_key = "event_time" if record_type == STATUS_CHANGES else "start_time"
-        times = [int(d[time_key]) for p in payloads for d in p["data"][record_type]]
-        try:
-            start = datetime.datetime.utcfromtimestamp(min(times))
-            end = datetime.datetime.utcfromtimestamp(max(times))
-        except:
-            start = datetime.datetime.utcfromtimestamp(min(times) / 1000)
-            end = datetime.datetime.utcfromtimestamp(max(times) / 1000)
+        times = [d[time_key] for p in payloads for d in p["data"][record_type]]
+
+        if all([isinstance(t, datetime.datetime) for t in times]):
+            start = min(times)
+            end = max(times)
+        else:
+            try:
+                start = datetime.datetime.utcfromtimestamp(int(min(times)))
+                end = datetime.datetime.utcfromtimestamp(int(max(times)))
+            except:
+                start = datetime.datetime.utcfromtimestamp(int(min(times)) / 1000.0)
+                end = datetime.datetime.utcfromtimestamp(int(max(times)) / 1000.0)
 
         # clip to hour of day, offset if they are the same
-        start = datetime(start.year, start.month, start.day, start.hour)
-        end = datetime(end.year, end.month, end.day, end.hour)
+        start = datetime.datetime(start.year, start.month, start.day, start.hour)
+        end = datetime.datetime(end.year, end.month, end.day, end.hour)
         if start == end:
             end = end + datetime.timedelta(hours=1)
 
