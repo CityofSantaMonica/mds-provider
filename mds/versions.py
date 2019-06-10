@@ -7,8 +7,8 @@ import sys
 import packaging.version
 
 
-__version__ = "0.4.0"
-__mds_lower_version__ = "0.2.1"
+__version__ = "0.5.0"
+__mds_lower_version__ = "0.2.0"
 __mds_upper_version__ = "0.4.0"
 
 
