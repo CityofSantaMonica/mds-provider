@@ -18,6 +18,7 @@ from ..versions import Version
 BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
 EVENT_TIME = "event_time"
+PUBLICATION_TIME = "publication_time"
 PROPULSION = "propulsion_type"
 
 
@@ -433,6 +434,9 @@ class ProviderDataGenerator():
             end_time=end_time
         )
 
+        if self.version >= Version("0.3.0"):
+            trip[PUBLICATION_TIME] = end_time
+
         # add a parking_verification_url?
         if random.choice([True, False]):
             trip.update(parking_verification_url=util.random_file_url(device["provider_name"]))
@@ -674,6 +678,10 @@ class ProviderDataGenerator():
                              event_type_reason=event_type_reason,
                              event_time=event_time,
                              event_location=event_location)
+
+        if self.version >= Version("0.3.0"):
+            status_change[PUBLICATION_TIME] = event_time
+
         return {**device, **status_change, **kwargs}
 
     def has_battery(self, device):

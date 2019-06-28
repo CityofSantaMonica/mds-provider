@@ -101,6 +101,7 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
             event_type,
             event_type_reason,
             event_time,
+            publication_time,
             event_location,
             battery_pct,
             associated_trip
@@ -115,6 +116,7 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
             cast(event_type as event_types),
             cast(event_type_reason as event_type_reasons),
             to_timestamp(cast(event_time as double precision) / 1000) at time zone 'UTC',
+            to_timestamp(cast(publication_time as double precision) / 1000) at time zone 'UTC',
             cast(event_location as jsonb),
             battery_pct,
             cast(associated_trip as uuid)
@@ -208,6 +210,7 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
             accuracy,
             start_time,
             end_time,
+            publication_time,
             parking_verification_url,
             standard_cost,
             actual_cost
@@ -226,6 +229,7 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
             accuracy,
             to_timestamp(cast(start_time as double precision) / 1000) at time zone 'UTC',
             to_timestamp(cast(end_time as double precision) / 1000) at time zone 'UTC',
+            to_timestamp(cast(publication_time as double precision) / 1000) at time zone 'UTC',
             parking_verification_url,
             standard_cost,
             actual_cost
