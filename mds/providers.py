@@ -2,6 +2,7 @@
 Work with Providers from the registry.
 """
 import csv
+import pathlib
 import uuid
 
 import requests
@@ -171,7 +172,7 @@ class Registry():
     @staticmethod
     def _get_registry(ref, path):
         if path:
-            path = Path(path)
+            path = pathlib.Path(path)
             with path.open("r") as f:
                 return Registry._parse_csv(f.readlines(), ref=ref, path=path)
         else:
@@ -183,6 +184,6 @@ class Registry():
     @staticmethod
     def _parse_csv(lines, **kwargs):
         """
-        Helper parses CSV lines into a list of Provider instances.
+        Parse CSV lines into a list of Provider instances.
         """
         return [Provider(**record, **kwargs) for record in csv.DictReader(lines)]
