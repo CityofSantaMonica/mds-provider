@@ -234,11 +234,25 @@ class Database():
             """
             Helper converts JSON cols and ensures optional cols exist
             """
-            if drop_duplicates: df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+            if drop_duplicates:
+                df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+
             self._json_cols_tostring(df, ["event_location"])
+
             missing_cols = ["battery_pct"]
-            missing_cols.append("associated_trips" if version < Version("0.3.0") else "associated_trip")
+
+            # version-depenedent association column
+            association_col = "associated_trips" if version < Version("0.3.0") else "associated_trip"
+            missing_cols.append(association_col)
             df = self._add_missing_cols(df, missing_cols)
+
+            # coerce to object column
+            df[[association_col]] = df[[association_col]].astype("object")
+
+            if version < Version("0.3.0"):
+                # empty list by default
+                df[association_col] = df[association_col].apply(lambda d: d if isinstance(d, list) else [])
+
             return before_load(df,v)
 
         return self.load(source, STATUS_CHANGES, table, before_load=_before_load, **kwargs)
@@ -276,9 +290,12 @@ class Database():
             """
             Helper converts JSON cols and ensures optional cols exist
             """
-            if drop_duplicates: df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+            if drop_duplicates:
+                df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+
             self._json_cols_tostring(df, ["route"])
             df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
+
             return before_load(df,v)
 
         return self.load(source, TRIPS, table, before_load=_before_load, **kwargs)
