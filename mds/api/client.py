@@ -18,26 +18,30 @@ class Client():
     Client for MDS Provider APIs.
     """
 
-    def __init__(self, provider=None, **kwargs):
+    def __init__(self, provider=None, config={}, **kwargs):
         """
         Parameters:
             provider: str, UUID, Provider, optional
                 Provider instance or identifier that this client queries by default.
 
-            config: dict, optional
+            config: dict, ConfigFile, optional
                 Attributes to merge with the Provider instance.
 
             version: str, Version, optional
                 The MDS version to target. By default, use Version.mds_lower().
+
+        Extra keyword arguments are taken as config attributes for the Provider.
         """
-        self.config = kwargs.pop("config", {})
-        if isinstance(self.config, ConfigFile):
-            self.config = self.config.dump()
+        if isinstance(config, ConfigFile):
+            config = config.dump()
 
         # look for version first in config, then kwargs, then use default
-        self.version = Version(self.config.pop("version", kwargs.pop("version", Version.mds_lower())))
+        self.version = Version(config.pop("version", kwargs.pop("version", Version.mds_lower())))
         if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
+
+        # merge config with the rest of kwargs
+        self.config = { **config, **kwargs }
 
         self.encoder = self._encoder_or_raise(self.version)
         self.provider = None
