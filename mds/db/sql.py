@@ -6,6 +6,25 @@ from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
 
 
+_COMMON_INSERTS= [
+    "provider_id",
+    "provider_name",
+    "device_id",
+    "vehicle_id",
+    "vehicle_type",
+    "propulsion_type"
+]
+
+_COMMON_SELECTS = [
+    "cast(provider_id as uuid)",
+    "provider_name",
+    "cast(device_id as uuid)",
+    "vehicle_id,"
+    "cast(vehicle_type as vehicle_types)",
+    "cast(propulsion_type as propulsion_types[])",
+]
+
+
 def on_conflict_statement(on_conflict_update=None):
     """
     Generate an appropriate "ON CONFLICT..." statement.
@@ -50,81 +69,63 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
     Return:
         str
     """
+    version = Version(kwargs.pop("version", Version.mds_lower()))
+    if version.unsupported:
+        raise UnsupportedVersionError(version)
+
     on_conflict_update = kwargs.pop("on_conflict_update", None)
     on_conflict = on_conflict_statement(on_conflict_update)
 
-    version = Version(kwargs.pop("version", Version.mds_lower()))
-    if version.supported and version < Version("0.3.0"):
-        return f"""
-        INSERT INTO "{dest_table}"
-        (
-            provider_id,
-            provider_name,
-            device_id,
-            vehicle_id,
-            vehicle_type,
-            propulsion_type,
-            event_type,
-            event_type_reason,
-            event_time,
-            event_location,
-            battery_pct,
-            associated_trips
-        )
-        SELECT
-            cast(provider_id as uuid),
-            provider_name,
-            cast(device_id as uuid),
-            vehicle_id,
-            cast(vehicle_type as vehicle_types),
-            cast(propulsion_type as propulsion_types[]),
-            cast(event_type as event_types),
-            cast(event_type_reason as event_type_reasons),
-            to_timestamp(event_time) at time zone 'UTC',
-            cast(event_location as json),
-            battery_pct,
-            cast(associated_trips as uuid[])
-        FROM "{source_table}"
-        { on_conflict }
-        ;
-        """
-    elif version.supported and version >= Version("0.3.0"):
-        return f"""
-        INSERT INTO "{dest_table}"
-        (
-            provider_id,
-            provider_name,
-            device_id,
-            vehicle_id,
-            vehicle_type,
-            propulsion_type,
-            event_type,
-            event_type_reason,
-            event_time,
-            publication_time,
-            event_location,
-            battery_pct,
-            associated_trip
-        )
-        SELECT
-            cast(provider_id as uuid),
-            provider_name,
-            cast(device_id as uuid),
-            vehicle_id,
-            cast(vehicle_type as vehicle_types),
-            cast(propulsion_type as propulsion_types[]),
-            cast(event_type as event_types),
-            cast(event_type_reason as event_type_reasons),
-            to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC',
-            to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC',
-            cast(event_location as jsonb),
-            battery_pct,
-            cast(associated_trip as uuid)
-        FROM "{source_table}"
-        { on_conflict }
-        ;
-        """
-    raise UnsupportedVersionError(version)
+    inserts = list(_COMMON_INSERTS)
+    inserts.extend([
+        "event_type",
+        "event_type_reason",
+        "event_location",
+        "battery_pct"
+    ])
+
+    selects = list(_COMMON_SELECTS)
+    selects.extend([
+        "cast(event_type as event_types)",
+        "cast(event_type_reason as event_type_reasons)",
+        "cast(event_location as jsonb)",
+        "battery_pct"
+    ])
+
+    if version < Version("0.3.0"):
+        inserts.extend([
+            "event_time",
+            "associated_trips"
+        ])
+
+        selects.extend([
+            "to_timestamp(event_time) at time zone 'UTC'",
+            "cast(associated_trips as uuid[])"
+        ])
+    else:
+        inserts.extend([
+            "event_time",
+            "publication_time",
+            "associated_trip"
+        ])
+
+        selects.extend([
+            "to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC'",
+            "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
+            "cast(associated_trip as uuid)"
+        ])
+
+    inserts = ",".join(inserts)
+    selects = ",".join(selects)
+
+    return f"""
+    INSERT INTO "{dest_table}"
+    ({inserts})
+    SELECT {selects}
+    FROM "{source_table}"
+    { on_conflict }
+    ;
+    """
 
 
 def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
@@ -147,94 +148,68 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
     Return:
         str
     """
+    version = Version(kwargs.pop("version", Version.mds_lower()))
+    if version.unsupported:
+        raise UnsupportedVersionError(version)
+
     on_conflict_update = kwargs.pop("on_conflict_update", None)
     on_conflict = on_conflict_statement(on_conflict_update)
 
-    version = Version(kwargs.pop("version", Version.mds_lower()))
-    if version.supported and version < Version("0.3.0"):
-        return f"""
-        INSERT INTO "{dest_table}"
-        (
-            provider_id,
-            provider_name,
-            device_id,
-            vehicle_id,
-            vehicle_type,
-            propulsion_type,
-            trip_id,
-            trip_duration,
-            trip_distance,
-            route,
-            accuracy,
-            start_time,
-            end_time,
-            parking_verification_url,
-            standard_cost,
-            actual_cost
-        )
-        SELECT
-            cast(provider_id as uuid),
-            provider_name,
-            cast(device_id as uuid),
-            vehicle_id,
-            cast(vehicle_type as vehicle_types),
-            cast(propulsion_type as propulsion_types[]),
-            cast(trip_id as uuid),
-            trip_duration,
-            trip_distance,
-            cast(route as jsonb),
-            accuracy,
-            to_timestamp(start_time) at time zone 'UTC',
-            to_timestamp(end_time) at time zone 'UTC',
-            parking_verification_url,
-            standard_cost,
-            actual_cost
-        FROM "{source_table}"
-        { on_conflict }
-        ;
-        """
-    elif version.supported and version >= Version("0.3.0"):
-        return f"""
-        INSERT INTO "{dest_table}"
-        (
-            provider_id,
-            provider_name,
-            device_id,
-            vehicle_id,
-            vehicle_type,
-            propulsion_type,
-            trip_id,
-            trip_duration,
-            trip_distance,
-            route,
-            accuracy,
-            start_time,
-            end_time,
-            publication_time,
-            parking_verification_url,
-            standard_cost,
-            actual_cost
-        )
-        SELECT
-            cast(provider_id as uuid),
-            provider_name,
-            cast(device_id as uuid),
-            vehicle_id,
-            cast(vehicle_type as vehicle_types),
-            cast(propulsion_type as propulsion_types[]),
-            cast(trip_id as uuid),
-            trip_duration,
-            trip_distance,
-            cast(route as jsonb),
-            accuracy,
-            to_timestamp(cast(start_time as double precision) / 1000.0) at time zone 'UTC',
-            to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC',
-            to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC',
-            parking_verification_url,
-            standard_cost,
-            actual_cost
-        FROM "{source_table}"
-        { on_conflict }
-        ;
-        """
-    raise UnsupportedVersionError(version)
+    inserts = list(_COMMON_INSERTS)
+    inserts.extend([
+        "trip_id",
+        "trip_duration",
+        "trip_distance",
+        "route",
+        "accuracy",
+        "parking_verification_url",
+        "standard_cost",
+        "actual_cost"
+    ])
+
+    selects = list(_COMMON_SELECTS)
+    selects.extend([
+        "cast(trip_id as uuid)",
+        "trip_duration",
+        "trip_distance",
+        "cast(route as jsonb)",
+        "accuracy",
+        "parking_verification_url,"
+        "standard_cost,"
+        "actual_cost"
+    ])
+
+    if version < Version("0.3.0"):
+        inserts.extend([
+            "start_time",
+            "end_time"
+        ])
+
+        selects.extend([
+            "to_timestamp(start_time) at time zone 'UTC'",
+            "to_timestamp(end_time) at time zone 'UTC'"
+        ])
+    else:
+        inserts.extend([
+            "start_time",
+            "end_time",
+            "publication_time",
+        ])
+
+        selects.extend([
+            "to_timestamp(cast(start_time as double precision) / 1000.0) at time zone 'UTC'",
+            "to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC'",
+            "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
+        ])
+
+    inserts = ",".join(inserts)
+    selects = ",".join(selects)
+
+    return f"""
+    INSERT INTO "{dest_table}"
+    ({inserts})
+    SELECT {selects}
+    FROM "{source_table}"
+    { on_conflict }
+    ;
+    """
