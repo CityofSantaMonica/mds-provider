@@ -24,30 +24,34 @@ python setup.py install
 
 ## Getting Started
 
+### Read from a Provider API
+
 ```python
 from datetime import datetime, timedelta
 
 import mds
 
-# Read from a Provider API
-
 end = datetime.utcnow()
 start = end - timedelta(hours=1)
 
-client = mds.Client("ProviderName", token="secret-token")
+client = mds.Client("provider_name", token="secret-token")
 
 trips = client.get_trips(start_time=start, end_time=end)
+```
 
-# Validate against the MDS schema
+### Validate against the MDS schema
 
+```python
 validator = mds.DataValidator.trips()
 
 for error in validator.validate(trips):
     print(error)
+```
 
-# Load into a Postgres database
+### Load into a Postgres database
 
-db = mds.Database(user="user", password="password", host="host", db="db")
+```python
+db = mds.Database(user="user", password="password", host="host", db="database")
 
 db.load_trips(trips)
 ```
