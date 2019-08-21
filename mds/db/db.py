@@ -181,16 +181,21 @@ class Database():
             Database
                 self
         """
-        version = Version(kwargs.get("version", self.version))
+        version = Version(kwargs.pop("version", self.version))
         if version.unsupported:
             raise UnsupportedVersionError(version)
 
         if "stage_first" not in kwargs:
             kwargs["stage_first"] = self.stage_first
 
+        loader_kwargs = {
+            **dict(record_type=record_type, table=table, engine=self.engine, version=version),
+            **kwargs
+        }
+
         for loader in loaders.data_loaders():
             if loader.can_load(source):
-                loader().load(source, record_type=record_type, table=table, engine=self.engine, **kwargs)
+                loader().load(source, **loader_kwargs)
                 return self
 
         raise TypeError(f"Unrecognized type for source: {type(source)}")
@@ -226,11 +231,7 @@ class Database():
         before_load = kwargs.pop("before_load", lambda df,v: df)
         drop_duplicates = kwargs.pop("drop_duplicates", None)
 
-        version = kwargs.get("version", self.version)
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
-
-        def _before_load(df,v):
+        def _before_load(df, version):
             """
             Helper converts JSON cols and ensures optional cols exist
             """
@@ -239,12 +240,16 @@ class Database():
 
             self._json_cols_tostring(df, ["event_location"])
 
-            missing_cols = ["battery_pct"]
+            null_cols = ["battery_pct"]
 
             # version-depenedent association column
             association_col = "associated_trips" if version < Version("0.3.0") else "associated_trip"
-            missing_cols.append(association_col)
-            df = self._add_missing_cols(df, missing_cols)
+            null_cols.append(association_col)
+
+            if version >= Version("0.3.0"):
+                null_cols.append("publication_time")
+
+            df = self._add_missing_cols(df, null_cols)
 
             # coerce to object column
             df[[association_col]] = df[[association_col]].astype("object")
@@ -253,7 +258,7 @@ class Database():
                 # empty list by default
                 df[association_col] = df[association_col].apply(lambda d: d if isinstance(d, list) else [])
 
-            return before_load(df,v)
+            return before_load(df, version)
 
         return self.load(source, STATUS_CHANGES, table, before_load=_before_load, **kwargs)
 
@@ -286,7 +291,7 @@ class Database():
         before_load = kwargs.pop("before_load", lambda df,v: df)
         drop_duplicates = kwargs.pop("drop_duplicates", ["provider_id", "trip_id"])
 
-        def _before_load(df,v):
+        def _before_load(df, version):
             """
             Helper converts JSON cols and ensures optional cols exist
             """
@@ -294,9 +299,15 @@ class Database():
                 df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
 
             self._json_cols_tostring(df, ["route"])
-            df = self._add_missing_cols(df, ["parking_verification_url", "standard_cost", "actual_cost"])
 
-            return before_load(df,v)
+            null_cols = ["parking_verification_url", "standard_cost", "actual_cost"]
+
+            if version >= Version("0.3.0"):
+                null_cols.append("publication_time")
+
+            df = self._add_missing_cols(df, null_cols)
+
+            return before_load(df, version)
 
         return self.load(source, TRIPS, table, before_load=_before_load, **kwargs)
 
