@@ -328,7 +328,7 @@ class DataValidator():
             return schema
         elif schema in SCHEMA_TYPES:
             return Schema(schema, ref=ref)
-        elif isinstance(getattr(self, "schema"), Schema):
+        elif isinstance(getattr(self, "schema", None), Schema):
             return self.schema
         else:
             raise ValueError("Could not obtain a schema for validation.")
