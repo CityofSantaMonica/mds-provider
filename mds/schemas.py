@@ -24,7 +24,7 @@ class Schema():
 
     def __init__(self, schema_type, ref=None):
         """
-        Initialize a new ProviderSchema instance.
+        Initialize a new Schema instance.
 
         Parameters:
             schema_type: str
@@ -66,13 +66,13 @@ class Schema():
             self.schema["$id"] = self.schema_url
 
     def __repr__(self):
-        return f"<mds.schemas.ProviderSchema ('{self.ref}', '{self.schema_type}', '{self.schema_url}')>"
+        return f"<mds.schemas.Schema ('{self.schema_type}', '{self.ref}', '{self.schema_url}')>"
 
     def validate(self, instance_source):
         """
         Validate an instance against this schema.
 
-        Shortcut method for ProviderSchemaValidator(self).validate(instance_source).
+        Shortcut method for DataValidator(self).validate(instance_source).
 
         Parameters:
             instance_source: dict
@@ -189,7 +189,7 @@ class DataValidationError():
             instance: dict
                 The MDS Provider data object under validation.
                 
-            provider_schema: ProviderSchema
+            provider_schema: Schema
                 The schema instance used as the basis for validation.
         """
         self.instance = validation_error.instance
@@ -302,12 +302,12 @@ class DataValidator():
 
     def __init__(self, schema=None, ref=None):
         """
-        Initialize a new ProviderSchemaValidator.
+        Initialize a new DataValidator.
 
         Parameters:
-            schema: str, ProviderSchema, optional
+            schema: str, Schema, optional
                 The type of schema to validate ("status_changes" or "trips"); or
-                A ProviderSchema instance to use for validation.
+                A Schema instance to use for validation.
 
             ref: str, Version, optional
                 The reference (git commit, branch, tag, or version) at which to reference the schema.
@@ -321,9 +321,9 @@ class DataValidator():
 
     def _get_schema_instance_or_raise(self, schema, ref):
         """
-        Helper to return a ProviderSchema instance from the possible arguments.
+        Helper to return a Schema instance from the possible arguments.
         """
-        # determine the ProviderSchema instance to use
+        # determine the Schema instance to use
         if isinstance(schema, Schema):
             return schema
         elif schema in SCHEMA_TYPES:
@@ -345,9 +345,9 @@ class DataValidator():
                 * path to a local file of JSON text
                 * URL to a remote file of JSON text
 
-            schema: str, ProviderSchema, optional
+            schema: str, Schema, optional
                 The type of schema to validate ("status_changes" or "trips"); or
-                A ProviderSchema instance to use for validation.
+                A Schema instance to use for validation.
 
             ref: str, Version, optional
                 The reference (git commit, branch, tag, or version) at which to reference the schema.
@@ -367,7 +367,7 @@ class DataValidator():
             except:
                 raise TypeError(f"Unrecognized instance_source type: {type(instance_source)}.")
 
-        # schema is a ProviderSchema instance
+        # schema is a Schema instance
         # schema.schema is the JSON Schema (dict) associated with it
         v = self._get_validator(schema.schema)
 
