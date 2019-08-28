@@ -242,9 +242,9 @@ class DataValidationError():
         """
         message = self.message.lower()
         if "is valid under each of" in message:
-            return []
+            message = "instance " + self.message[message.index("is valid under each of"):]
         if "is not of type" in message:
-            message = "value " + self.message[self.message.index("is not of type"):]
+            message = "value " + self.message[message.index("is not of type"):]
 
         path = ".".join(self.path[:2])
         if len(self.path) > 2:
