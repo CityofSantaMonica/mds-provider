@@ -213,9 +213,9 @@ class DataValidationError():
             list
                 A list of error messages describing the error.
         """
-        if len(self.path) >= 4:
+        if len(self.path) >= 3:
             return self._describe_item()
-        elif len(self.path) >= 2:
+        elif len(self.path) == 2:
             return self._describe_payload()
         else:
             return self._describe_page()
@@ -240,15 +240,7 @@ class DataValidationError():
         """
         Describe a payload-level error.
         """
-        message = self.message.lower()
-        if "is valid under each of" in message:
-            message = "instance " + self.message[message.index("is valid under each of"):]
-        if "is not of type" in message:
-            message = "value " + self.message[message.index("is not of type"):]
-
-        path = ".".join(self.path[:2])
-        if len(self.path) > 2:
-            path = f"{path}[{self.path[2]}]"
+        path = ".".join(self.path)
 
         return [
             f"Payload error in {path}",
@@ -259,40 +251,24 @@ class DataValidationError():
         """
         Describe an item-level error.
         """
-        index = self.path[2]
-        field = self.path[3]
+        index = list(filter(lambda i: isinstance(i, int), self.path))[0]
         item = self.original_instance["data"][self.schema_type][index]
-        item_path = f"{self.schema_type}[{index}]"
+        path = f"{self.schema_type}[{index}]"
 
-        messages = [
-            f"Item error in {item_path}.{field}: {self.message}",
-            f"{item_path} snippet:",
+        message = self.message.lower()
+        if "is valid under each of" in message:
+            message = "instance " + self.message[message.index("is valid under each of"):]
+        if "is not of type" in message:
+            message = "value " + self.message[message.index("is not of type"):]
+
+        # this is an error about a specific attribute on this item
+        if len(self.path) > 3:
+            path = ".".join([path, self.path[-1]])
+
+        return [
+            f"Item error in {path}",
+            message
         ]
-
-        snippet = [
-            "{",
-            f"  'provider_name': '{item['provider_name']}',",
-            f"  'device_id': '{item['device_id']}',",
-            f"  'vehicle_id': '{item['vehicle_id']}',",
-            f"  'vehicle_type': '{item['vehicle_type']}',",
-            f"  'propulsion_type': {item['propulsion_type']},",
-        ]
-
-        if self.schema_type == STATUS_CHANGES:
-            snippet.extend([
-                f"  'event_time': '{item['event_time']}',",
-                f"  'event_location': '{mds.geometry.extract_point(item['event_location'])}'"
-            ])
-        elif self.schema_type == TRIPS:
-            snippet.extend([
-                f"  'trip_id': '{item['trip_id']}',",
-                f"  'start_time': '{item['start_time']}',",
-                f"  'end_time': '{item['end_time']}'",
-            ])
-
-        snippet.append("}")
-
-        return messages + snippet
 
 
 class DataValidator():
