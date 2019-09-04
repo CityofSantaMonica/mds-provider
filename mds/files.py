@@ -324,7 +324,6 @@ class DataFile(BaseFile):
 
             # generate a file name for the list of payloads
             fname = file_name(record_type=record_type, payloads=sources, extension=".json")
-            print(fname)
             path = pathlib.Path(output_dir, fname)
 
             # dump the single payload or a list of payloads
