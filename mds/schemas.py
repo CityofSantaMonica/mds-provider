@@ -244,7 +244,7 @@ class DataValidationError():
 
         return [
             f"Payload error in {path}",
-            message
+            self.message
         ]
 
     def _describe_item(self):
