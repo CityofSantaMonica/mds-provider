@@ -100,13 +100,14 @@ class ProviderClient():
             # establish an authenticated session
             session = self._auth_session(provider)
 
-            # get the initial page of data
-            r = session.get(url, params=params)
-
-            if r.status_code is not 200:
+            try: 
+                # get the initial page of data
+                r = session.get(url, params=params)
+                r.raise_for_status()
+            except requests.exceptions.HTTPError as e: 
                 __describe(r)
-                continue
-
+                raise e
+            
             this_page = r.json()
 
             # track the list of pages per provider
@@ -114,12 +115,13 @@ class ProviderClient():
 
             # get subsequent pages of data
             next_url = __next_url(this_page)
-            while paging and next_url:
-                r = session.get(next_url)
-
-                if r.status_code is not 200:
+            while paging and next_url:        
+                try: 
+                    r = session.get(next_url)
+                    r.raise_for_status()
+                except requests.exceptions.HTTPError as e: 
                     __describe(r)
-                    break
+                    raise e
 
                 this_page = r.json()
 
