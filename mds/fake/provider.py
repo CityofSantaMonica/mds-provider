@@ -49,10 +49,10 @@ class ProviderDataGenerator():
             version: str, Version, optional
                 The MDS version to target. By default, use Version.mds_lower().
         """
-        self.boundary = boundary
+        self.boundary = mds.geometry.parse_boundary(boundary)
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
         self.trips_schema = Schema.trips(self.version)
-        self.speed = kwargs.get("speed")
+        self.speed = kwargs.get("speed", random.randint(4, 9))
 
         self.vehicle_types = kwargs.get("vehicle_types", self.trips_schema.vehicle_types)
         if isinstance(self.vehicle_types, str):
@@ -381,6 +381,9 @@ class ProviderDataGenerator():
         Returns:
             tuple (status_changes: list, trip: dict)
         """
+        if event_time is None and reference_time is None:
+            reference_time = datetime.datetime.utcnow()
+
         if (event_time is None) and (reference_time is not None):
             event_time = util.random_date_from(reference_time, min_td=min_td, max_td=max_td)
 
@@ -391,8 +394,19 @@ class ProviderDataGenerator():
         if speed is None:
             speed = self.speed
 
+        # Generate the trip_id to fill the associated_trip key in the status changes
+        trip_id = uuid.uuid4()
+        status_changes_kwargs = {}
+        if self.version >= Version("0.3.0"):
+            status_changes_kwargs["associated_trip"] = trip_id
+        else:
+            status_changes_kwargs["associated_trips"] = [trip_id]
+
         # begin the trip
-        status_changes = [self.start_trip(device, event_time, event_location)]
+        status_changes = [self.start_trip(device,
+                                          event_time,
+                                          event_location,
+                                          **status_changes_kwargs)]
 
         # random trip duration (in seconds)
         # the gamma distribution is referenced in the literature,
@@ -426,7 +440,7 @@ class ProviderDataGenerator():
         # and finally the trip object
         trip = dict(
             accuracy=int(accuracy),
-            trip_id=uuid.uuid4(),
+            trip_id=trip_id,
             trip_duration=int(trip_duration),
             trip_distance=int(trip_distance),
             route=route,
@@ -454,7 +468,10 @@ class ProviderDataGenerator():
             trip.update(actual_cost=(start + (math.floor(trip_duration/60) - 1) * rate))
 
         # end the trip
-        status_changes.append(self.end_trip(device, end_time, end_location))
+        status_changes.append(self.end_trip(device,
+                                            end_time,
+                                            end_location,
+                                            **status_changes_kwargs))
 
         # merge the device info into the trip
         trip = {**device, **trip}
@@ -468,7 +485,7 @@ class ProviderDataGenerator():
         # return a list of the status_changes and the trip
         return [{**device, **sc} for sc in status_changes], trip
 
-    def start_trip(self, device, event_time, event_location):
+    def start_trip(self, device, event_time, event_location, **kwargs):
         """
         Create a reserved:user_pick_up status_change event.
 
@@ -491,7 +508,8 @@ class ProviderDataGenerator():
             event_type="reserved",
             event_type_reason="user_pick_up",
             event_time=event_time,
-            event_location=event_location
+            event_location=event_location,
+            **kwargs
         )
 
     def trip_route(self, start_location, end_location):
@@ -512,7 +530,7 @@ class ProviderDataGenerator():
         features = [start_location, end_location]
         return dict(type="FeatureCollection", features=features)
 
-    def end_trip(self, device, event_time, event_location):
+    def end_trip(self, device, event_time, event_location, **kwargs):
         """
         Create an available:user_drop_off status_change event.
 
@@ -535,7 +553,8 @@ class ProviderDataGenerator():
             event_type="available",
             event_type_reason="user_drop_off",
             event_time=event_time,
-            event_location=event_location
+            event_location=event_location,
+            **kwargs
         )
 
     def device_lowbattery(self, device, event_time, event_location):
