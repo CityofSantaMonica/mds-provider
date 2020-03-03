@@ -62,7 +62,7 @@ class Database():
 
     def __init__(self, uri=None, **kwargs):
         """
-        Initialize a new ProviderDataLoader using a number of connection methods.
+        Initialize a new Database using a number of connection methods.
 
         Parameters:
             uri: str, optional
@@ -240,23 +240,12 @@ class Database():
 
             self._json_cols_tostring(df, ["event_location"])
 
-            null_cols = ["battery_pct"]
-
-            # version-depenedent association column
-            association_col = "associated_trips" if version < Version("0.3.0") else "associated_trip"
-            null_cols.append(association_col)
-
-            if version >= Version("0.3.0"):
-                null_cols.append("publication_time")
-
+            # inject any missing optional columns
+            null_cols = ["battery_pct", "associated_trip", "publication_time"]
             df = self._add_missing_cols(df, null_cols)
 
             # coerce to object column
-            df[[association_col]] = df[[association_col]].astype("object")
-
-            if version < Version("0.3.0"):
-                # empty list by default
-                df[association_col] = df[association_col].apply(lambda d: d if isinstance(d, list) else [])
+            df[["associated_trip"]] = df[["associated_trip"]].astype("object")
 
             return before_load(df, version)
 
@@ -300,10 +289,7 @@ class Database():
 
             self._json_cols_tostring(df, ["route"])
 
-            null_cols = ["parking_verification_url", "standard_cost", "actual_cost"]
-
-            if version >= Version("0.3.0"):
-                null_cols.append("publication_time")
+            null_cols = ["parking_verification_url", "standard_cost", "actual_cost", "publication_time"]
 
             df = self._add_missing_cols(df, null_cols)
 

@@ -113,10 +113,7 @@ class TimestampEncoder():
             str
         """
         if self.date_format == "unix":
-            if self.version < Version("0.3.0"):
-                return str(int(data.timestamp()))
-            else:
-                return str(int(round(data.timestamp() * 1000)))
+            return str(int(round(data.timestamp() * 1000)))
         elif self.date_format == "iso8601":
             return data.isoformat()
         elif self.date_format is not None:
@@ -153,9 +150,6 @@ class TimestampDecoder():
             datetime
         """
         try:
-            if self.version < Version("0.3.0"):
-                return datetime.datetime.utcfromtimestamp(int(data))
-            else:
-                return datetime.datetime.utcfromtimestamp(int(data / 1000.0))
+            return datetime.datetime.utcfromtimestamp(int(data / 1000.0))
         except:
             return dateutil.parser.parse(data)

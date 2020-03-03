@@ -12,13 +12,12 @@ import scipy.stats
 import mds.geometry
 from ..fake import geometry, util
 from ..schemas import Schema
-from ..versions import Version
+from ..versions import UnsupportedVersionError, Version
 
 
 BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
 EVENT_TIME = "event_time"
-PUBLICATION_TIME = "publication_time"
 PROPULSION = "propulsion_type"
 
 
@@ -49,8 +48,11 @@ class ProviderDataGenerator():
             version: str, Version, optional
                 The MDS version to target. By default, use Version.mds_lower().
         """
-        self.boundary = mds.geometry.parse_boundary(boundary)
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
+        if self.version.unsupported:
+            raise UnsupportedVersionError(self.version)
+
+        self.boundary = mds.geometry.parse_boundary(boundary)
         self.trips_schema = Schema.trips(self.version)
         self.speed = kwargs.get("speed", random.randint(4, 9))
 
@@ -396,11 +398,7 @@ class ProviderDataGenerator():
 
         # Generate the trip_id to fill the associated_trip key in the status changes
         trip_id = uuid.uuid4()
-        status_changes_kwargs = {}
-        if self.version >= Version("0.3.0"):
-            status_changes_kwargs["associated_trip"] = trip_id
-        else:
-            status_changes_kwargs["associated_trips"] = [trip_id]
+        status_changes_kwargs = { "associated_trip": trip_id }
 
         # begin the trip
         status_changes = [self.start_trip(device,
@@ -445,11 +443,9 @@ class ProviderDataGenerator():
             trip_distance=int(trip_distance),
             route=route,
             start_time=event_time,
-            end_time=end_time
+            end_time=end_time,
+            publication_time=end_time
         )
-
-        if self.version >= Version("0.3.0"):
-            trip[PUBLICATION_TIME] = end_time
 
         # add a parking_verification_url?
         if random.choice([True, False]):
@@ -696,10 +692,8 @@ class ProviderDataGenerator():
         status_change = dict(event_type=event_type,
                              event_type_reason=event_type_reason,
                              event_time=event_time,
-                             event_location=event_location)
-
-        if self.version >= Version("0.3.0"):
-            status_change[PUBLICATION_TIME] = event_time
+                             event_location=event_location,
+                             publication_time=event_time)
 
         return {**device, **status_change, **kwargs}
 

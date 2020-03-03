@@ -144,11 +144,10 @@ class Client():
         # select the appropriate time range parameter names from record_type and version
 
         times = {}
-        # the querystring for status_changes and trips < 0.3.0
         start = kwargs.pop("start_time", None)
         end = kwargs.pop("end_time", None)
 
-        if record_type == STATUS_CHANGES or version < Version("0.3.0"):
+        if record_type == STATUS_CHANGES:
             times["start_time"] = self._date_format(start)
             times["end_time"] = self._date_format(end)
         else:

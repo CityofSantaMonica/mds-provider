@@ -12,7 +12,8 @@ _COMMON_INSERTS= [
     "device_id",
     "vehicle_id",
     "vehicle_type",
-    "propulsion_type"
+    "propulsion_type",
+    "publication_time"
 ]
 
 _COMMON_SELECTS = [
@@ -22,6 +23,7 @@ _COMMON_SELECTS = [
     "vehicle_id,"
     "cast(vehicle_type as vehicle_types)",
     "cast(propulsion_type as propulsion_types[])",
+    "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
 ]
 
 
@@ -81,7 +83,9 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "event_type",
         "event_type_reason",
         "event_location",
-        "battery_pct"
+        "event_time",
+        "battery_pct",
+        "associated_trip"
     ])
 
     selects = list(_COMMON_SELECTS)
@@ -89,31 +93,10 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "cast(event_type as event_types)",
         "cast(event_type_reason as event_type_reasons)",
         "cast(event_location as jsonb)",
-        "battery_pct"
+        "to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC'",
+        "battery_pct",
+        "cast(associated_trip as uuid)"
     ])
-
-    if version < Version("0.3.0"):
-        inserts.extend([
-            "event_time",
-            "associated_trips"
-        ])
-
-        selects.extend([
-            "to_timestamp(event_time) at time zone 'UTC'",
-            "cast(associated_trips as uuid[])"
-        ])
-    else:
-        inserts.extend([
-            "event_time",
-            "publication_time",
-            "associated_trip"
-        ])
-
-        selects.extend([
-            "to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC'",
-            "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
-            "cast(associated_trip as uuid)"
-        ])
 
     inserts = ",".join(inserts)
     selects = ",".join(selects)
@@ -162,6 +145,8 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "trip_distance",
         "route",
         "accuracy",
+        "start_time",
+        "end_time",
         "parking_verification_url",
         "standard_cost",
         "actual_cost"
@@ -174,33 +159,12 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "trip_distance",
         "cast(route as jsonb)",
         "accuracy",
+        "to_timestamp(cast(start_time as double precision) / 1000.0) at time zone 'UTC'",
+        "to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC'",
         "parking_verification_url,"
         "standard_cost,"
         "actual_cost"
     ])
-
-    if version < Version("0.3.0"):
-        inserts.extend([
-            "start_time",
-            "end_time"
-        ])
-
-        selects.extend([
-            "to_timestamp(start_time) at time zone 'UTC'",
-            "to_timestamp(end_time) at time zone 'UTC'"
-        ])
-    else:
-        inserts.extend([
-            "start_time",
-            "end_time",
-            "publication_time",
-        ])
-
-        selects.extend([
-            "to_timestamp(cast(start_time as double precision) / 1000.0) at time zone 'UTC'",
-            "to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC'",
-            "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
-        ])
 
     inserts = ",".join(inserts)
     selects = ",".join(selects)
