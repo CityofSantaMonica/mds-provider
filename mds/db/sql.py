@@ -20,7 +20,7 @@ _COMMON_SELECTS = [
     "cast(provider_id as uuid)",
     "provider_name",
     "cast(device_id as uuid)",
-    "vehicle_id,"
+    "vehicle_id",
     "cast(vehicle_type as vehicle_types)",
     "cast(propulsion_type as propulsion_types[])",
     "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
@@ -161,8 +161,8 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "accuracy",
         "to_timestamp(cast(start_time as double precision) / 1000.0) at time zone 'UTC'",
         "to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC'",
-        "parking_verification_url,"
-        "standard_cost,"
+        "parking_verification_url",
+        "standard_cost",
         "actual_cost"
     ])
 
