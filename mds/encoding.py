@@ -33,6 +33,7 @@ class JsonEncoder(json.JSONEncoder):
                 Configure how dates are formatted using one of:
                 * unix: format dates as a numeric offset from Unix epoch (default, Version-aware)
                 * iso8601: format dates as ISO 8601 strings
+                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds, etc.)
                 * python format string: custom format
 
             version: str, Version, optional
@@ -83,10 +84,11 @@ class TimestampEncoder():
     def __init__(self, **kwargs):
         """
         Parameters:
-            date_format: str
+            date_format: str, optional
                 Configure how dates are formatted using one of:
                 * unix: format dates as a numeric offset from Unix epoch (default, Version-aware)
                 * iso8601: format dates as ISO 8601 strings
+                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds, etc.)
                 * python format string: custom format
 
             version: str, Version, optional
@@ -112,14 +114,14 @@ class TimestampEncoder():
         Return:
             str
         """
-        if self.date_format == "unix":
+        date_format = "auto" if self.date_format == "iso8601" else self.date_format
+
+        if date_format == "unix":
             return str(int(round(data.timestamp() * 1000)))
-        elif self.date_format == "iso8601":
-            return data.isoformat()
-        elif self.date_format is not None:
-            return data.strftime(self.date_format)
-        else:
-            return str(int(data))
+        try:
+            return data.isoformat(timespec=date_format)
+        except ValueError:
+            return data.strftime(date_format)
 
 
 class TimestampDecoder():
@@ -134,6 +136,8 @@ class TimestampDecoder():
                 The MDS version to target.
         """
         self.version = Version(kwargs.get("version", Version.mds_lower()))
+        if self.version.unsupported:
+            raise UnsupportedVersionError(self.version)
 
     def __repr__(self):
         return f"<mds.encoding.TimestampDecoder ('{self.version}')>"
@@ -150,6 +154,6 @@ class TimestampDecoder():
             datetime
         """
         try:
-            return datetime.datetime.utcfromtimestamp(int(data / 1000.0))
+            return datetime.datetime.fromtimestamp(int(data / 1000.0), tz=datetime.timezone.utc)
         except:
             return dateutil.parser.parse(data)

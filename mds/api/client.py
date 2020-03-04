@@ -5,12 +5,15 @@ MDS Provider API client implementation.
 import datetime
 import time
 
-from ..encoding import TimestampEncoder
+from ..encoding import TimestampEncoder, TimestampDecoder
 from ..files import ConfigFile
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
 from .auth import auth_types
+
+
+_V040_ = Version("0.4.0")
 
 
 class Client():
@@ -43,9 +46,7 @@ class Client():
         # merge config with the rest of kwargs
         self.config = { **config, **kwargs }
 
-        self.encoder = self._encoder_or_raise(self.version)
         self.provider = None
-
         if provider:
             self.provider = Provider(provider, ref=self.version, **self.config)
 
@@ -56,18 +57,22 @@ class Client():
         data = "'" + "', '".join(data) + "'"
         return f"<mds.api.Client ({data})>"
 
-    def _date_format(self, dt, version=None):
+    def _date_format(self, dt, version, record_type):
         """
         Format datetimes for querystrings.
         """
         if dt is None:
             return None
         if not isinstance(dt, datetime.datetime):
-            return int(dt)
-        if version is None or version == self.version:
-            return self.encoder.encode(dt)
+            # convert to datetime using decoder
+            dt = TimestampDecoder(version=version).decode(dt)
+
+        if version >= _V040_ and record_type in [STATUS_CHANGES, TRIPS]:
+            encoder = TimestampEncoder(version=version, date_format="hours")
         else:
-            return self._encoder_or_raise(version).encode(dt)
+            encoder = TimestampEncoder(version=version, date_format="unix")
+
+        return encoder.encode(dt)
 
     def _media_type_version_header(self, version):
         """
@@ -102,26 +107,34 @@ class Client():
                 Attributes to merge with the Provider instance.
 
             end_time: datetime, int, optional
-                Filters for records occuring before the given time.
-                Should be a datetime or Version-specific numeric UNIX timestamp.
+                When version < 0.4.0 and requesting status_changes, filters for events occurring before the given time.
+                When version >= 0.4.0 and requesting trips, filters for trips ending within the hour of the given timestamp.
+                Invalid for other use-cases.
+                Should be a datetime or int UNIX milliseconds.
+
+            event_time: datetime, int, optional
+                When version >= 0.4.0 and requesting status_changes, filters for events occurring within the hour of the given timestamp.
+                Invalid for other use-cases.
+                Should be a datetime or int UNIX milliseconds.
 
             max_end_time: datetime, int, optional
-                Filters for trips where end_time occurs before the given time.
+                When version < 0.4.0 and requesting trips, filters for trips where end_time occurs before the given time.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
-                Only valid when version >= Version("0.3.0") and requesting trips.
 
             min_end_time: datetime, int, optional
-                Filters for trips where end_time occurs at or after the given time.
+                when version < 0.4.0 and requesting trips, filters for trips where end_time occurs at or after the given time.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
-                Only valid when version >= Version("0.3.0") and requesting trips.
 
             paging: bool, optional
                 True (default) to follow paging and request all available data.
                 False to request only the first page.
 
             start_time: datetime, int, optional
-                Filters for records occuring at or after the given time.
-                Should be a datetime or Version-specific numeric UNIX timestamp.
+                When version < 0.4.0 and requesting status_changes, filters for events occuring at or after the given time.
+                Invalid for other use-cases.
+                Should be a datetime or int UNIX milliseconds.
 
             rate_limit: int, optional
                 Number of seconds of delay to insert between paging requests.
@@ -135,31 +148,35 @@ class Client():
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
+        version = Version(kwargs.pop("version", self.version))
+        if version.unsupported:
+            raise UnsupportedVersionError(version)
+
+        if version < _V040_:
+            if record_type not in [STATUS_CHANGES, TRIPS]:
+                raise ValueError(f"MDS Version {version} only supports {STATUS_CHANGES} and {TRIPS}.")
+            # adjust time query formats
+            if record_type == STATUS_CHANGES:
+                kwargs["start_time"] = self._date_format(kwargs.pop("start_time", None), version, record_type)
+                kwargs["end_time"] = self._date_format(kwargs.pop("end_time", None), version, record_type)
+            elif record_type == TRIPS:
+                kwargs["min_end_time"] = self._date_format(kwargs.pop("min_end_time", None), version, record_type)
+                kwargs["max_end_time"] = self._date_format(kwargs.pop("max_end_time", None), version, record_type)
+        else:
+            # these time parameters are required for the indicated record_type
+            req_params = { STATUS_CHANGES: "event_time", TRIPS: "end_time" }
+            if record_type in req_params and req_params[record_type] not in kwargs:
+                raise ValueError(f"The '{req_params[record_type]}' query parameter is required for '{record_type}' requests.")
+            # adjust time query formats
+            if record_type == STATUS_CHANGES:
+                kwargs["event_time"] = self._date_format(kwargs.pop("event_time"), version, record_type)
+            elif record_type == TRIPS:
+                kwargs["end_time"] = self._date_format(kwargs.pop("end_time"), version, record_type)
+
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, **config)
-        paging = bool(kwargs.pop("paging", True))
+        paging = bool(kwargs.pop("paging", True)
         rate_limit = int(kwargs.pop("rate_limit", 0))
-        version = Version(kwargs.pop("version", self.version))
-
-        # select the appropriate time range parameter names from record_type and version
-
-        times = {}
-        start = kwargs.pop("start_time", None)
-        end = kwargs.pop("end_time", None)
-
-        if record_type == STATUS_CHANGES:
-            times["start_time"] = self._date_format(start)
-            times["end_time"] = self._date_format(end)
-        else:
-            # set to the new querystring arg, but allow use of either new or old
-            times["min_end_time"] = self._date_format(kwargs.pop("min_end_time", start), version=version)
-            times["max_end_time"] = self._date_format(kwargs.pop("max_end_time", end), version=version)
-
-        # combine with leftover kwargs
-        params = {
-            **times,
-            **kwargs
-        }
 
         if not hasattr(provider, "headers"):
             setattr(provider, "headers", {})
@@ -167,7 +184,7 @@ class Client():
         provider.headers.update(dict([(self._media_type_version_header(version))]))
 
         # request
-        return self._request(provider, record_type, params, paging, rate_limit)
+        return self._request(provider, record_type, kwargs, paging, rate_limit)
 
     def get_status_changes(self, provider=None, **kwargs):
         """
@@ -182,11 +199,18 @@ class Client():
                 Attributes to merge with the Provider instance.
 
             start_time: datetime, int, optional
-                Filters for status changes where event_time occurs at or after the given time.
+                When version < 0.4.0, filters for events occuring at or after the given time.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             end_time: datetime, int, optional
-                Filters for status changes where event_time occurs before the given time.
+                When version < 0.4.0, filters for events occurring before the given time.
+                Invalid for other use-cases.
+                Should be a datetime or int UNIX milliseconds.
+
+            event_time: datetime, int, optional
+                When version >= 0.4.0, filters for events occurring within the hour of the given timestamp.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
@@ -225,25 +249,20 @@ class Client():
             vehicle_id: str, optional
                 Filters for trips taken by the given vehicle.
 
-            start_time: datetime, float, optional
-                Filters for trips where start_time occurs at or after the given time.
-                Should be a datetime or float UNIX seconds.
-                Only valid when version < Version("0.3.0").
-
-            end_time: datetime, float, optional
-                Filters for trips where end_time occurs at or before the given time.
-                Should be a datetime or float UNIX seconds.
-                Only valid when version < Version("0.3.0").
-
-            min_end_time: datetime, int, optional
-                Filters for trips where end_time occurs at or after the given time.
+            end_time: datetime, int, optional
+                When version >= 0.4.0, filters for trips ending within the hour of the given timestamp.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
-                Only valid when version >= Version("0.3.0").
 
             max_end_time: datetime, int, optional
-                Filters for trips where end_time occurs before the given time.
+                When version < 0.4.0, filters for trips where end_time occurs before the given time.
+                Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
-                Only valid when version >= Version("0.3.0").
+
+            min_end_time: datetime, int, optional
+                when version < 0.4.0, filters for trips where end_time occurs at or after the given time.
+                Invalid for other use-cases.
+                Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
                 True (default) to follow paging and request all available data.
@@ -262,16 +281,6 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         return self.get(TRIPS, provider, **kwargs)
-
-    @staticmethod
-    def _encoder_or_raise(version):
-        """
-        Gets a TimestampEncoder instance for the given version, if supported.
-        """
-        if version.supported:
-            return TimestampEncoder(date_format="unix", version=version)
-        else:
-            raise UnsupportedVersionError(version)
 
     @staticmethod
     def _request(provider, record_type, params, paging, rate_limit):
