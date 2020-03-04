@@ -172,6 +172,9 @@ class Client():
                 kwargs["event_time"] = self._date_format(kwargs.pop("event_time"), version, record_type)
             elif record_type == TRIPS:
                 kwargs["end_time"] = self._date_format(kwargs.pop("end_time"), version, record_type)
+                # remove unsupported params
+                kwargs.pop("device_id", None)
+                kwargs.pop("vehicle_id", None)
 
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, **config)
@@ -247,10 +250,12 @@ class Client():
                 Attributes to merge with the Provider instance.
 
             device_id: str, UUID, optional
-                Filters for trips taken by the given device.
+                When version < 0.4.0, filters for trips taken by the given device.
+                Invalid for other use-cases.
 
             vehicle_id: str, optional
-                Filters for trips taken by the given vehicle.
+                When version < 0.4.0, filters for trips taken by the given vehicle.
+                Invalid for other use-cases.
 
             end_time: datetime, int, optional
                 When version >= 0.4.0, filters for trips ending within the hour of the given timestamp.
