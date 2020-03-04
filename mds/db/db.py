@@ -241,7 +241,7 @@ class Database():
             self._json_cols_tostring(df, ["event_location"])
 
             # inject any missing optional columns
-            null_cols = ["battery_pct", "associated_trip", "publication_time"]
+            null_cols = ["battery_pct", "associated_trip", "publication_time", "associated_ticket"]
             df = self._add_missing_cols(df, null_cols)
 
             # coerce to object column
@@ -289,7 +289,7 @@ class Database():
 
             self._json_cols_tostring(df, ["route"])
 
-            null_cols = ["parking_verification_url", "standard_cost", "actual_cost", "publication_time"]
+            null_cols = ["parking_verification_url", "standard_cost", "actual_cost", "publication_time", "currency"]
 
             df = self._add_missing_cols(df, null_cols)
 

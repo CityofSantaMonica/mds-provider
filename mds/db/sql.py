@@ -85,7 +85,8 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "event_location",
         "event_time",
         "battery_pct",
-        "associated_trip"
+        "associated_trip",
+        "associated_ticket"
     ])
 
     selects = list(_COMMON_SELECTS)
@@ -95,7 +96,8 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "cast(event_location as jsonb)",
         "to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC'",
         "battery_pct",
-        "cast(associated_trip as uuid)"
+        "cast(associated_trip as uuid)",
+        "associated_ticket"
     ])
 
     inserts = ",".join(inserts)
@@ -149,7 +151,8 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "end_time",
         "parking_verification_url",
         "standard_cost",
-        "actual_cost"
+        "actual_cost",
+        "currency"
     ])
 
     selects = list(_COMMON_SELECTS)
@@ -163,7 +166,8 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "to_timestamp(cast(end_time as double precision) / 1000.0) at time zone 'UTC'",
         "parking_verification_url",
         "standard_cost",
-        "actual_cost"
+        "actual_cost",
+        "currency"
     ])
 
     inserts = ",".join(inserts)
