@@ -128,8 +128,8 @@ class Client():
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                True (default) to follow paging and request all available data.
-                False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                Unsupported for version >= 0.4.0.
 
             start_time: datetime, int, optional
                 When version < 0.4.0 and requesting status_changes, filters for events occuring at or after the given time.
@@ -175,8 +175,11 @@ class Client():
 
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, **config)
-        paging = bool(kwargs.pop("paging", True)
         rate_limit = int(kwargs.pop("rate_limit", 0))
+
+        # paging is only supported for status_changes and trips prior to version 0.4.0
+        paging_supported = (record_type in [STATUS_CHANGES, TRIPS] and version < _V040_) or record_type not in [STATUS_CHANGES, TRIPS]
+        paging = paging_supported and bool(kwargs.pop("paging", True))
 
         if not hasattr(provider, "headers"):
             setattr(provider, "headers", {})
@@ -214,8 +217,8 @@ class Client():
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                True (default) to follow paging and request all available data.
-                False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                Unsupported for version >= 0.4.0.
 
             rate_limit: int, optional
                 Number of seconds of delay to insert between paging requests.
@@ -265,8 +268,8 @@ class Client():
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                True (default) to follow paging and request all available data.
-                False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                Unsupported for version >= 0.4.0,
 
             rate_limit: int, optional
                 Number of seconds of delay to insert between paging requests.
