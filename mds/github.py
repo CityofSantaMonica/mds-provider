@@ -43,7 +43,7 @@ def schema_url(schema_type, ref=None):
 
     Parameters:
         schema_type: str
-                The type of MDS Provider schema ("status_changes" or "trips").
+            The type of MDS Provider schema.
 
         ref: str, Version, optional
             Reference the schema at the version specified, which could be any of:

@@ -8,7 +8,7 @@ import uuid
 import requests
 
 import mds.github
-from .schemas import STATUS_CHANGES, TRIPS
+from .schemas import STATUS_CHANGES, TRIPS, EVENTS
 from .versions import Version
 
 
@@ -95,7 +95,8 @@ class Provider():
             endpoint.append(self.mds_api_suffix.rstrip("/"))
         return {
             STATUS_CHANGES: "/".join(endpoint + [STATUS_CHANGES]),
-            TRIPS: "/".join(endpoint + [TRIPS])
+            TRIPS: "/".join(endpoint + [TRIPS]),
+            EVENTS: "/".join(endpoint + [EVENTS])
         }
 
     @staticmethod

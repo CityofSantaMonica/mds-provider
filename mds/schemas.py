@@ -14,7 +14,8 @@ from .versions import UnsupportedVersionError, Version
 
 STATUS_CHANGES = "status_changes"
 TRIPS = "trips"
-SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS ]
+EVENTS = "events"
+SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS, EVENTS ]
 
 
 class Schema():
@@ -28,7 +29,7 @@ class Schema():
 
         Parameters:
             schema_type: str
-                The type of MDS Provider schema ("status_changes" or "trips").
+                The type of MDS Provider schema.
 
             ref: str, Version, optional
                 Reference the schema at the version specified, which could be any of:
@@ -172,6 +173,13 @@ class Schema():
         """
         return Schema(TRIPS, ref)
 
+    @classmethod
+    def events(cls, ref=None):
+        """
+        Acquires the events schema.
+        """
+        return Schema(EVENTS, ref)
+
 
 class DataValidationError():
     """
@@ -282,7 +290,7 @@ class DataValidator():
 
         Parameters:
             schema: str, Schema, optional
-                The type of schema to validate ("status_changes" or "trips"); or
+                The type of schema to validate; or
                 A Schema instance to use for validation.
 
             ref: str, Version, optional
@@ -322,7 +330,7 @@ class DataValidator():
                 * URL to a remote file of JSON text
 
             schema: str, Schema, optional
-                The type of schema to validate ("status_changes" or "trips"); or
+                The type of schema to validate; or
                 A Schema instance to use for validation.
 
             ref: str, Version, optional
@@ -330,7 +338,7 @@ class DataValidator():
 
         Return:
             iterator
-                Zero or more ProviderDataValidationError instances.
+                Zero or more DataValidationError instances.
         """
         schema = self._get_schema_instance_or_raise(schema, ref)
 
@@ -373,3 +381,10 @@ class DataValidator():
         Create a Trips validator.
         """
         return DataValidator(TRIPS, ref)
+
+    @classmethod
+    def events(cls, ref=None):
+        """
+        Create an Events validator.
+        """
+        return DataValidator(EVENTS, ref)
