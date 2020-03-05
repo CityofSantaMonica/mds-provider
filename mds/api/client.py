@@ -8,7 +8,7 @@ import time
 from ..encoding import TimestampEncoder, TimestampDecoder
 from ..files import ConfigFile
 from ..providers import Provider
-from ..schemas import STATUS_CHANGES, TRIPS
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS
 from ..versions import UnsupportedVersionError, Version
 from .auth import auth_types
 
@@ -97,7 +97,7 @@ class Client():
 
         Parameters:
             record_type: str
-                The type of MDS Provider record ("status_changes" or "trips").
+                The type of MDS Provider record.
 
             provider: str, UUID, Provider, optional
                 Provider instance or identifier to issue this request to.
@@ -304,6 +304,43 @@ class Client():
 
         return self.get(TRIPS, provider, **kwargs)
 
+    def get_events(self, provider=None, **kwargs):
+        """
+        Request events, returning a list of non-empty payloads.
+
+        Parameters:
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier to issue this request to.
+                By default issue the request to this client's Provider instance.
+
+            config: dict, ConfigFile, optional
+                Attributes to merge with the Provider instance.
+
+            paging: bool, optional
+                True (default) to follow paging and request all available data.
+                False to request only the first page.
+
+            rate_limit: int, optional
+                Number of seconds of delay to insert between paging requests.
+
+            version: str, Version, optional
+                The MDS version to target.
+
+            Additional keyword arguments are passed through as API request parameters.
+
+        Return:
+            list
+                The non-empty payloads (e.g. payloads with data records), one for each requested page.
+        """
+        version = Version(kwargs.get("version", self.version))
+        if version.unsupported:
+            raise UnsupportedVersionError(version)
+        if version < Version("0.4.0"):
+            print("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
+            raise UnsupportedVersionError(version)
+
+        return self.get(EVENTS, provider, **kwargs)
+
     @staticmethod
     def _request(provider, record_type, params, paging, rate_limit):
         """
@@ -383,7 +420,8 @@ class Client():
         Checks if this page has a "data" property with a non-empty payload.
         """
         data = page["data"] if "data" in page else {"__payload__": []}
-        payload = data[record_type] if record_type in data else []
+        payload_key = STATUS_CHANGES if record_type == EVENTS else record_type
+        payload = data[payload_key] if payload_key in data else []
         print(f"Got payload with {len(payload)} {record_type}")
         return len(payload) > 0
 
