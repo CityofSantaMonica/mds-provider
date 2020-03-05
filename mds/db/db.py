@@ -140,10 +140,7 @@ class Database():
                 * a pandas.DataFrame containing MDS data records
 
             record_type: str
-                The type of MDS data, e.g. status_changes or trips
-
-            record_type: str
-                The type of MDS data ("status_changes" or "trips").
+                The type of MDS data.
 
             table: str
                 The name of the database table to insert this data into.
@@ -296,6 +293,14 @@ class Database():
             return before_load(df, version)
 
         return self.load(source, TRIPS, table, before_load=_before_load, **kwargs)
+
+    def load_events(self, source, **kwargs):
+        """
+        Load MDS events data.
+
+        Since events have the same structure as status_changes, this method just proxies to load_status_changes().
+        """
+        return self.load_status_changes(source, **kwargs)
 
     @staticmethod
     def _json_cols_tostring(df, cols):

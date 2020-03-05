@@ -9,7 +9,7 @@ import pandas as pd
 from ..db import sql
 from ..fake import util
 from ..files import DataFile
-from ..schemas import STATUS_CHANGES, TRIPS
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS
 from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
 
 
@@ -39,7 +39,7 @@ class DataFrame():
                 DataFrame of type record_type to insert.
 
             record_type: str
-                The type of MDS data ("status_changes" or "trips")
+                The type of MDS data.
 
             table: str
                 The name of the database table to insert this data into.
@@ -102,7 +102,7 @@ class DataFrame():
 
         # now insert from the temp table to the actual table
         with engine.begin() as conn:
-            if record_type == STATUS_CHANGES:
+            if record_type in [STATUS_CHANGES, EVENTS]:
                 query = sql.insert_status_changes_from(temp, table, on_conflict_update=on_conflict_update, version=version)
             elif record_type == TRIPS:
                 query = sql.insert_trips_from(temp, table, on_conflict_update=on_conflict_update, version=version)
@@ -133,7 +133,7 @@ class File(DataFrame):
                 An mds.files.DataFile compatible JSON file path.
 
             record_type: str
-                The type of MDS data ("status_changes" or "trips")
+                The type of MDS data
 
             table: str
                 The name of the database table to insert this data into.
@@ -191,7 +191,7 @@ class Records(DataFrame):
                 One or more dicts of type record_type.
 
             record_type: str
-                The type of MDS data ("status_changes" or "trips").
+                The type of MDS data.
 
             table: str
                 The name of the database table to insert this data into.
@@ -244,7 +244,7 @@ class Payloads(Records):
                 One or more payload dicts.
 
             record_type: str
-                The type of MDS data ("status_changes" or "trips").
+                The type of MDS data.
 
             table: str
                 The name of the database table to insert this data into.
@@ -261,11 +261,12 @@ class Payloads(Records):
             source = [source]
 
         kwargs["record_type"] = record_type
-        for payload in [p for p in source if record_type in p["data"]]:
+        payload_key = STATUS_CHANGES if record_type == EVENTS else record_type
+        for payload in [p for p in source if payload_key in p["data"]]:
             if version and version != Version(payload["version"]):
                 raise UnexpectedVersionError(payload["version"], version)
 
-            records = payload["data"][record_type]
+            records = payload["data"][payload_key]
             super().load(records, **kwargs)
 
     @classmethod
