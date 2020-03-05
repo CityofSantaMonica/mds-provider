@@ -13,9 +13,9 @@ import urllib
 import requests
 import pandas as pd
 
-from .encoding import JsonEncoder
+from .encoding import JsonEncoder, TimestampDecoder, TimestampEncoder
 from .providers import Provider
-from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS
+from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS, EVENTS
 from .versions import UnexpectedVersionError, Version
 
 
@@ -183,7 +183,7 @@ class DataFile(BaseFile):
         """
         Parameters:
             record_type: str, optional
-                The type of MDS Provider record ("status_changes" or "trips") to use by default.
+                The type of MDS Provider record to use by default.
 
             sources: str, Path, list, optional
                 One or more paths to (directories containing) MDS payload (JSON) files to read by default.
@@ -246,7 +246,7 @@ class DataFile(BaseFile):
 
         Parameters:
             record_type: str, optional
-                The type of MDS Provider record ("status_changes" or "trips").
+                The type of MDS Provider record.
 
             payloads: dict, iterable
                 One or more MDS Provider payload dicts to write.
@@ -303,7 +303,8 @@ class DataFile(BaseFile):
 
         # filter payloads with non-matching record_type
         if record_type in SCHEMA_TYPES:
-            sources = [p for p in sources if record_type in p["data"]]
+            payload_key = self._payload_key(record_type)
+            sources = [p for p in sources if payload_key in p["data"]]
 
         if len(sources) == 0:
             return None
@@ -360,7 +361,7 @@ class DataFile(BaseFile):
 
         Parameters:
             record_type: str, optional
-                The type of MDS Provider record ("status_changes" or "trips").
+                The type of MDS Provider record.
 
             sources: str, list, optional
                 One or more paths to (directories containing) MDS payload (JSON) files.
@@ -422,7 +423,7 @@ class DataFile(BaseFile):
 
         Parameters:
             record_type: str, optional
-                The type of MDS Provider record ("status_changes" or "trips").
+                The type of MDS Provider record.
                 By default get payloads of each type.
 
             sources: str, Path, list, optional
@@ -483,10 +484,11 @@ class DataFile(BaseFile):
         # filter out payloads with non-matching record_type
         if record_type:
             filtered = []
+            payload_key = self._payload_key(record_type)
             for payload in data:
                 if isinstance(payload, list):
-                    filtered.extend(filter(lambda p: record_type in p["data"], payload))
-                elif "data" in payload and record_type in payload["data"]:
+                    filtered.extend(filter(lambda p: payload_key in p["data"], payload))
+                elif "data" in payload and payload_key in payload["data"]:
                     filtered.append(payload)
             data = filtered
 
@@ -508,7 +510,7 @@ class DataFile(BaseFile):
 
         Parameters:
             record_type: str, optional
-                The type of MDS Provider record ("status_changes" or "trips").
+                The type of MDS Provider record.
 
             sources: str, optional
                 One or more paths to (directories containing) MDS payload (JSON) files.
@@ -558,12 +560,13 @@ class DataFile(BaseFile):
             version = Version(payloads[0]["version"])
 
         # collect versions and data from each payload
+        payload_key = self._payload_key(record_type)
         _payloads = []
         for payload in payloads:
             if not isinstance(payload, list):
                 payload = [payload]
             for page in payload:
-                _payloads.append((page["version"], page["data"][record_type]))
+                _payloads.append((page["version"], page["data"][payload_key]))
 
         if flatten:
             if not all([Version(v) == version for v,_ in _payloads]):
@@ -597,20 +600,23 @@ class DataFile(BaseFile):
             shadigest = hashlib.sha256(data).hexdigest()
             return f"{shadigest[0:7]}{extension}"
 
+        payload_key = cls._payload_key(record_type)
+
         # find time boundaries from the data
-        time_key = "event_time" if record_type == STATUS_CHANGES else "start_time"
-        times = [d[time_key] for p in payloads for d in p["data"][record_type]]
+        if record_type in [STATUS_CHANGES, EVENTS]:
+            time_key = "event_time"
+        elif record_type == TRIPS:
+            time_key = "end_time"
+
+        times = [d[time_key] for p in payloads for d in p["data"][payload_key]]
 
         if all([isinstance(t, datetime.datetime) for t in times]):
             start = min(times)
             end = max(times)
         else:
-            try:
-                start = datetime.datetime.utcfromtimestamp(int(min(times)))
-                end = datetime.datetime.utcfromtimestamp(int(max(times)))
-            except:
-                start = datetime.datetime.utcfromtimestamp(int(min(times)) / 1000.0)
-                end = datetime.datetime.utcfromtimestamp(int(max(times)) / 1000.0)
+            decoder = TimestampDecoder()
+            start = decoder.decode(min(times))
+            end = decoder.decode(max(times))
 
         # clip to hour of day, offset if they are the same
         start = datetime.datetime(start.year, start.month, start.day, start.hour)
@@ -618,10 +624,10 @@ class DataFile(BaseFile):
         if start == end:
             end = end + datetime.timedelta(hours=1)
 
-        fmt = "%Y%m%dT%H0000Z"
-        providers = set([d["provider_name"] for p in payloads for d in p["data"][record_type]])
+        encoder = TimestampEncoder(date_format="%Y%m%dT%H0000Z")
+        providers = set([d["provider_name"] for p in payloads for d in p["data"][payload_key]])
 
-        return f"{'_'.join(providers)}_{record_type}_{start.strftime(fmt)}_{end.strftime(fmt)}{extension}"
+        return f"{'_'.join(providers)}_{record_type}_{encoder.encode(start)}_{encoder.encode(end)}{extension}"
 
     @classmethod
     def _ls(cls, sources):
@@ -637,3 +643,10 @@ class DataFile(BaseFile):
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
         return files, urls
+
+    @classmethod
+    def _payload_key(cls, record_type):
+        """
+        The events endpoint returns a status_changes data payload, so return the correct payload key.
+        """
+        return STATUS_CHANGES if record_type == EVENTS else record_type
