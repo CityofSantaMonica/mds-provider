@@ -166,7 +166,7 @@ class Client():
             # these time parameters are required for the indicated record_type
             req_params = { STATUS_CHANGES: "event_time", TRIPS: "end_time" }
             if record_type in req_params and req_params[record_type] not in kwargs:
-                raise ValueError(f"The '{req_params[record_type]}' query parameter is required for '{record_type}' requests.")
+                raise TypeError(f"The '{req_params[record_type]}' query parameter is required for {record_type} requests.")
             # adjust time query formats
             if record_type == STATUS_CHANGES:
                 kwargs["event_time"] = self._date_format(kwargs.pop("event_time"), version, record_type)
@@ -235,6 +235,13 @@ class Client():
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
+        version = Version(kwargs.get("version", self.version))
+        if version.unsupported:
+            raise UnsupportedVersionError(version)
+
+        if version >= _V040_ and "event_time" not in kwargs:
+            raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
+
         return self.get(STATUS_CHANGES, provider, **kwargs)
 
     def get_trips(self, provider=None, **kwargs):
@@ -288,6 +295,13 @@ class Client():
             list
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
+        version = Version(kwargs.get("version", self.version))
+        if version.unsupported:
+            raise UnsupportedVersionError(version)
+
+        if version >= _V040_ and "end_time" not in kwargs:
+            raise TypeError("The 'end_time' query parameter is required for trips requests.")
+
         return self.get(TRIPS, provider, **kwargs)
 
     @staticmethod
