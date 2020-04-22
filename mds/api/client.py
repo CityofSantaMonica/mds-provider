@@ -320,7 +320,7 @@ class Client():
         # get the initial page of data
         r = session.get(url, params=params)
 
-        if r.status_code is not 200:
+        if r.status_code != 200:
             Client._describe(r)
             return results
 
@@ -333,7 +333,7 @@ class Client():
         while paging and next_url:
             r = session.get(next_url)
 
-            if r.status_code is not 200:
+            if r.status_code != 200:
                 Client._describe(r)
                 break
 
@@ -374,7 +374,7 @@ class Client():
         for k,v in res.headers.items():
             print(f"{k}: {v}")
 
-        if res.status_code is not 200:
+        if res.status_code != 200:
             print(res.text)
 
     @staticmethod
