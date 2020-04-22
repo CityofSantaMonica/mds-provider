@@ -43,8 +43,8 @@ class JsonEncoder(json.JSONEncoder):
         if self.version.unsupported:
             raise UnsupportedVersionError(self.version)
 
-        date_format = kwargs.pop("date_format", "unix")
-        self.timestamp_encoder = TimestampEncoder(date_format=date_format, version=self.version)
+        self.date_format = kwargs.pop("date_format", "unix")
+        self.timestamp_encoder = TimestampEncoder(date_format=self.date_format, version=self.version)
 
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
