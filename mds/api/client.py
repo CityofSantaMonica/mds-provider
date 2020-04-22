@@ -163,10 +163,13 @@ class Client():
                 kwargs["min_end_time"] = self._date_format(kwargs.pop("min_end_time", None), version, record_type)
                 kwargs["max_end_time"] = self._date_format(kwargs.pop("max_end_time", None), version, record_type)
         else:
-            # these time parameters are required for the indicated record_type
-            req_params = { STATUS_CHANGES: "event_time", TRIPS: "end_time" }
-            if record_type in req_params and req_params[record_type] not in kwargs:
-                raise TypeError(f"The '{req_params[record_type]}' query parameter is required for {record_type} requests.")
+            # check required time parameters
+            if record_type == STATUS_CHANGES and "event_time" not in kwargs:
+                raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
+            elif record_type == TRIPS and "end_time" not in kwargs:
+                raise TypeError("The 'end_time' query parameter is required for trips requests.")
+            elif record_type == EVENTS and "start_time" not in kwargs and "end_time" not in kwargs:
+                raise TypeError("The 'start_time' and 'end_time' query parameters are required for events requests.")
             # adjust time query formats
             if record_type == STATUS_CHANGES:
                 kwargs["event_time"] = self._date_format(kwargs.pop("event_time"), version, record_type)
@@ -175,6 +178,9 @@ class Client():
                 # remove unsupported params
                 kwargs.pop("device_id", None)
                 kwargs.pop("vehicle_id", None)
+            elif record_type == EVENTS:
+                kwargs["start_time"] = self._date_format(kwargs.pop("start_time"), version, record_type)
+                kwargs["end_time"] = self._date_format(kwargs.pop("end_time"), version, record_type)
 
         config = kwargs.pop("config", self.config)
         provider = self._provider_or_raise(provider, **config)
@@ -335,9 +341,12 @@ class Client():
         version = Version(kwargs.get("version", self.version))
         if version.unsupported:
             raise UnsupportedVersionError(version)
-        if version < Version("0.4.0"):
+        if version < _V040_:
             print("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
             raise UnsupportedVersionError(version)
+
+        if "start_time" not in kwargs and "end_time" not in kwargs:
+            raise TypeError("The 'start_time' and 'end_time' query paramters are required for events requests.")
 
         return self.get(EVENTS, provider, **kwargs)
 
