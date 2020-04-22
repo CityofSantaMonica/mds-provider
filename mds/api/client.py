@@ -57,23 +57,6 @@ class Client():
         data = "'" + "', '".join(data) + "'"
         return f"<mds.api.Client ({data})>"
 
-    def _date_format(self, dt, version, record_type):
-        """
-        Format datetimes for querystrings.
-        """
-        if dt is None:
-            return None
-        if not isinstance(dt, datetime.datetime):
-            # convert to datetime using decoder
-            dt = TimestampDecoder(version=version).decode(dt)
-
-        if version >= _V040_ and record_type in [STATUS_CHANGES, TRIPS]:
-            encoder = TimestampEncoder(version=version, date_format="hours")
-        else:
-            encoder = TimestampEncoder(version=version, date_format="unix")
-
-        return encoder.encode(dt)
-
     def _media_type_version_header(self, version):
         """
         The custom MDS media-type and version header, using this client's version
@@ -163,14 +146,9 @@ class Client():
                 kwargs["min_end_time"] = self._date_format(kwargs.pop("min_end_time", None), version, record_type)
                 kwargs["max_end_time"] = self._date_format(kwargs.pop("max_end_time", None), version, record_type)
         else:
-            # check required time parameters
-            if record_type == STATUS_CHANGES and "event_time" not in kwargs:
-                raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
-            elif record_type == TRIPS and "end_time" not in kwargs:
-                raise TypeError("The 'end_time' query parameter is required for trips requests.")
-            elif record_type == EVENTS and "start_time" not in kwargs and "end_time" not in kwargs:
-                raise TypeError("The 'start_time' and 'end_time' query parameters are required for events requests.")
-            # adjust time query formats
+            # parameter checks for record_type and version
+            Client._params_check(record_type, version, **kwargs)
+            # adjust query params
             if record_type == STATUS_CHANGES:
                 kwargs["event_time"] = self._date_format(kwargs.pop("event_time"), version, record_type)
             elif record_type == TRIPS:
@@ -245,8 +223,7 @@ class Client():
         if version.unsupported:
             raise UnsupportedVersionError(version)
 
-        if version >= _V040_ and "event_time" not in kwargs:
-            raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
+        Client._params_check(STATUS_CHANGES, version, **kwargs)
 
         return self.get(STATUS_CHANGES, provider, **kwargs)
 
@@ -305,8 +282,7 @@ class Client():
         if version.unsupported:
             raise UnsupportedVersionError(version)
 
-        if version >= _V040_ and "end_time" not in kwargs:
-            raise TypeError("The 'end_time' query parameter is required for trips requests.")
+        Client._params_check(TRIPS, version, **kwargs)
 
         return self.get(TRIPS, provider, **kwargs)
 
@@ -345,8 +321,7 @@ class Client():
             print("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
             raise UnsupportedVersionError(version)
 
-        if "start_time" not in kwargs and "end_time" not in kwargs:
-            raise TypeError("The 'start_time' and 'end_time' query paramters are required for events requests.")
+        Client._params_check(EVENTS, version, **kwargs)
 
         return self.get(EVENTS, provider, **kwargs)
 
@@ -440,3 +415,42 @@ class Client():
         Gets the next URL or None from page.
         """
         return page["links"].get("next") if "links" in page else None
+
+    @staticmethod
+    def _date_format(dt, version, record_type):
+        """
+        Format datetimes for querystrings.
+        """
+        if dt is None:
+            return None
+        if not isinstance(dt, datetime.datetime):
+            # convert to datetime using decoder
+            dt = TimestampDecoder(version=version).decode(dt)
+
+        if version >= _V040_ and record_type in [STATUS_CHANGES, TRIPS]:
+            encoder = TimestampEncoder(version=version, date_format="hours")
+        else:
+            encoder = TimestampEncoder(version=version, date_format="unix")
+
+        return encoder.encode(dt)
+
+    @staticmethod
+    def _params_check(record_type, version, **kwargs):
+        """
+        Common checks for record_type query parameters.
+        """
+        if record_type == STATUS_CHANGES and version >= _V040_ and "event_time" not in kwargs:
+            raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
+        elif record_type == TRIPS and version >= _V040_ and "end_time" not in kwargs:
+            raise TypeError("The 'end_time' query parameter is required for trips requests.")
+        elif record_type == EVENTS:
+            if "start_time" not in kwargs and "end_time" not in kwargs:
+                raise TypeError("The 'start_time' and 'end_time' query paramters are required for events requests.")
+
+            two_weeks = Client._date_format(datetime.datetime.utcnow() - datetime.timedelta(days=14), version, EVENTS)
+            start = Client._date_format(kwargs["start_time"], version, EVENTS)
+            end = Client._date_format(kwargs["end_time"], version, EVENTS)
+
+            # less than --> earlier in time
+            if start < two_weeks or end < two_weeks:
+                raise ValueError(f"The 'start_time' and 'end_time' query parameters must be within two weeks from now.")
