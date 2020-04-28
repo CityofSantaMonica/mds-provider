@@ -8,7 +8,7 @@ import time
 from ..encoding import TimestampEncoder, TimestampDecoder
 from ..files import ConfigFile
 from ..providers import Provider
-from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, VEHICLES, Schema
 from ..versions import Version
 from .auth import auth_types
 
@@ -320,11 +320,49 @@ class Client():
         version.raise_if_unsupported()
 
         if version < _V040_:
-            raise ValueError("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
+            raise ValueError(f"MDS Version {version} does not support the events endpoint.")
 
         Client._params_check(EVENTS, version, **kwargs)
 
         return self.get(EVENTS, provider, **kwargs)
+
+    def get_vehicles(self, provider=None, **kwargs):
+        """
+        Request vehicles, returning a list of non-empty payloads.
+
+        Parameters:
+            provider: str, UUID, Provider, optional
+                Provider instance or identifier to issue this request to.
+                By default issue the request to this client's Provider instance.
+
+            config: dict, ConfigFile, optional
+                Attributes to merge with the Provider instance.
+
+            paging: bool, optional
+                True (default) to follow paging and request all available data.
+                False to request only the first page.
+
+            rate_limit: int, optional
+                Number of seconds of delay to insert between paging requests.
+
+            version: str, Version, optional
+                The MDS version to target.
+
+            Additional keyword arguments are passed through as API request parameters.
+
+        Return:
+            list
+                The non-empty payloads (e.g. payloads with data records), one for each requested page.
+        """
+        version = Version(kwargs.get("version", self.version))
+        version.raise_if_unsupported()
+
+        if version < _V040_:
+            raise ValueError(f"MDS Version {version} does not support the vehicles endpoint.")
+
+        Client._params_check(VEHICLES, version, **kwargs)
+
+        return self.get(VEHICLES, provider, **kwargs)
 
     @staticmethod
     def _request(provider, record_type, params, paging, rate_limit):
@@ -351,8 +389,9 @@ class Client():
                 Client._describe(r)
                 break
             # check payload for data
+            # for vehicles, keep payload regardless as last_updated and ttl info may be useful
             payload = r.json()
-            if Client._has_data(payload, record_type):
+            if record_type == VEHICLES or Client._has_data(payload, record_type):
                 results.append(payload)
             # check for next page
             url = Client._next_url(payload)
@@ -433,8 +472,10 @@ class Client():
         """
         if record_type == STATUS_CHANGES and version >= _V040_ and "event_time" not in kwargs:
             raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
+
         elif record_type == TRIPS and version >= _V040_ and "end_time" not in kwargs:
             raise TypeError("The 'end_time' query parameter is required for trips requests.")
+
         elif record_type == EVENTS:
             if "start_time" not in kwargs and "end_time" not in kwargs:
                 raise TypeError("The 'start_time' and 'end_time' query paramters are required for events requests.")
@@ -446,3 +487,7 @@ class Client():
             # less than --> earlier in time
             if start < two_weeks or end < two_weeks:
                 raise ValueError(f"The 'start_time' and 'end_time' query parameters must be within two weeks from now.")
+
+        elif record_type == VEHICLES:
+            # currently no vehicles specific param checks
+            pass
