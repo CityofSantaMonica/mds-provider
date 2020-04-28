@@ -8,7 +8,7 @@ import time
 from ..encoding import TimestampEncoder, TimestampDecoder
 from ..files import ConfigFile
 from ..providers import Provider
-from ..schemas import STATUS_CHANGES, TRIPS, EVENTS
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
 from ..versions import UnsupportedVersionError, Version
 from .auth import auth_types
 
@@ -410,7 +410,7 @@ class Client():
         Checks if this page has a "data" property with a non-empty payload.
         """
         data = page["data"] if "data" in page else {"__payload__": []}
-        payload_key = STATUS_CHANGES if record_type == EVENTS else record_type
+        payload_key = Schema(record_type).schema_key
         payload = data[payload_key] if payload_key in data else []
         print(f"Got payload with {len(payload)} {record_type}")
         return len(payload) > 0

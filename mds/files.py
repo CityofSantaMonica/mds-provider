@@ -13,7 +13,7 @@ import pandas as pd
 
 from .encoding import JsonEncoder, TimestampDecoder, TimestampEncoder
 from .providers import Provider
-from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS, EVENTS
+from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS, EVENTS, Schema
 from .versions import UnexpectedVersionError, Version
 
 
@@ -306,7 +306,7 @@ class DataFile(BaseFile):
 
         # filter payloads with non-matching record_type
         if record_type in SCHEMA_TYPES:
-            payload_key = self._payload_key(record_type)
+            payload_key = Schema(record_type).schema_key
             sources = [p for p in sources if payload_key in p["data"]]
 
         if len(sources) == 0:
@@ -487,7 +487,7 @@ class DataFile(BaseFile):
         # filter out payloads with non-matching record_type
         if record_type:
             filtered = []
-            payload_key = self._payload_key(record_type)
+            payload_key = Schema(record_type).schema_key
             for payload in data:
                 if isinstance(payload, list):
                     filtered.extend(filter(lambda p: payload_key in p["data"], payload))
@@ -563,7 +563,7 @@ class DataFile(BaseFile):
             version = Version(payloads[0]["version"])
 
         # collect versions and data from each payload
-        payload_key = self._payload_key(record_type)
+        payload_key = Schema(record_type).schema_key
         _payloads = []
         for payload in payloads:
             if not isinstance(payload, list):
@@ -603,7 +603,7 @@ class DataFile(BaseFile):
             shadigest = hashlib.sha256(data).hexdigest()
             return f"{shadigest[0:7]}{extension}"
 
-        payload_key = cls._payload_key(record_type)
+        payload_key = Schema(record_type).schema_key
 
         # find time boundaries from the data
         if record_type in [STATUS_CHANGES, EVENTS]:
@@ -646,10 +646,3 @@ class DataFile(BaseFile):
         files.extend([f for ls in [d.glob("*.json") for d in dirs] for f in ls])
 
         return files, urls
-
-    @classmethod
-    def _payload_key(cls, record_type):
-        """
-        The events endpoint returns a status_changes data payload, so return the correct payload key.
-        """
-        return STATUS_CHANGES if record_type == EVENTS else record_type

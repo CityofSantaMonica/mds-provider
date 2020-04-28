@@ -9,7 +9,7 @@ import pandas as pd
 from ..db import sql
 from ..fake import util
 from ..files import DataFile
-from ..schemas import STATUS_CHANGES, TRIPS, EVENTS
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
 from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
 
 
@@ -153,7 +153,7 @@ class File(DataFrame):
             UnexpectedVersionError
                 When data is parsed with a version different from what was expected.
         """
-        record_type = kwargs.pop("record_type")
+        record_type = kwargs.get("record_type")
         version = Version(kwargs.get("version"))
 
         # read the data file
@@ -161,8 +161,6 @@ class File(DataFrame):
 
         if version and _version != version:
             raise UnexpectedVersionError(_version, version)
-
-        kwargs["record_type"] = record_type
 
         return super().load(df, **kwargs)
 
@@ -260,14 +258,13 @@ class Payloads(Records):
 
             Additional keyword arguments are passed-through to DataFrameLoader.load().
         """
-        record_type = kwargs.pop("record_type")
+        record_type = kwargs.get("record_type")
         version = kwargs.get("version")
 
         if isinstance(source, dict):
             source = [source]
 
-        kwargs["record_type"] = record_type
-        payload_key = STATUS_CHANGES if record_type == EVENTS else record_type
+        payload_key = Schema(record_type).schema_key
         for payload in [p for p in source if payload_key in p["data"]]:
             if version and version != Version(payload["version"]):
                 raise UnexpectedVersionError(payload["version"], version)
