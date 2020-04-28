@@ -338,39 +338,30 @@ class Client():
 
         Returns a list of payloads, with length corresponding to the number of non-empty responses.
         """
-        url = provider.endpoints[record_type]
-        results = []
-
         # establish an authenticated session
         session = Client._session(provider)
+        url = provider.endpoints[record_type]
+        results = []
+        first = True
 
-        # get the initial page of data
-        r = session.get(url, params=params)
-
-        if r.status_code != 200:
-            Client._describe(r)
-            return results
-
-        payload = r.json()
-        if Client._has_data(payload, record_type):
-            results.append(payload)
-
-        # get subsequent pages of data
-        next_url = Client._next_url(payload)
-        while paging and next_url:
-            r = session.get(next_url)
-
+        while (first or paging) and url:
+            # get the page of data
+            if first:
+                r = session.get(url, params=params)
+                first = False
+            else:
+                r = session.get(url)
+            # bail for non-200 status
             if r.status_code != 200:
                 Client._describe(r)
                 break
-
+            # check payload for data
             payload = r.json()
             if Client._has_data(payload, record_type):
                 results.append(payload)
-
-            next_url = Client._next_url(payload)
-
-            if next_url and rate_limit:
+            # check for next page
+            url = Client._next_url(payload)
+            if url and rate_limit:
                 time.sleep(rate_limit)
 
         return results
