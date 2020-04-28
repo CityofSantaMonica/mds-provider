@@ -15,7 +15,8 @@ from .versions import Version
 STATUS_CHANGES = "status_changes"
 TRIPS = "trips"
 EVENTS = "events"
-SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS, EVENTS ]
+VEHICLES = "vehicles"
+SCHEMA_TYPES = [ STATUS_CHANGES, TRIPS, EVENTS, VEHICLES ]
 
 
 class Schema():
@@ -161,23 +162,30 @@ class Schema():
     @classmethod
     def status_changes(cls, ref=None):
         """
-        Acquires the status_changes schema.
+        Acquires the Status Changes schema.
         """
         return Schema(STATUS_CHANGES, ref)
 
     @classmethod
     def trips(cls, ref=None):
         """
-        Acquires the trips schema.
+        Acquires the Trips schema.
         """
         return Schema(TRIPS, ref)
 
     @classmethod
     def events(cls, ref=None):
         """
-        Acquires the events schema.
+        Acquires the Events schema.
         """
         return Schema(EVENTS, ref)
+
+    @classmethod
+    def vehicles(cls, ref=None):
+        """
+        Acquires the Vehicles schema.
+        """
+        return Schema(VEHICLES, ref)
 
 
 class DataValidationError():
@@ -387,3 +395,10 @@ class DataValidator():
         Create an Events validator.
         """
         return DataValidator(EVENTS, ref)
+
+    @classmethod
+    def vehicles(cls, ref=None):
+        """
+        Create a Vehicles validator.
+        """
+        return DataValidator(VEHICLES, ref)

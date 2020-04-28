@@ -7,5 +7,5 @@ from .db import data_engine, Database
 from .encoding import JsonEncoder, TimestampDecoder, TimestampEncoder
 from .files import ConfigFile, DataFile
 from .providers import Provider, Registry
-from .schemas import STATUS_CHANGES, TRIPS, EVENTS, DataValidator, Schema
+from .schemas import STATUS_CHANGES, TRIPS, EVENTS, VEHICLES, DataValidator, Schema
 from .versions import UnsupportedVersionError, Version

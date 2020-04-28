@@ -8,7 +8,7 @@ import uuid
 import requests
 
 import mds.github
-from .schemas import STATUS_CHANGES, TRIPS, EVENTS
+from .schemas import STATUS_CHANGES, TRIPS, EVENTS, VEHICLES
 from .versions import Version
 
 
@@ -101,7 +101,8 @@ class Provider():
         return {
             STATUS_CHANGES: "/".join(endpoint + [STATUS_CHANGES]),
             TRIPS: "/".join(endpoint + [TRIPS]),
-            EVENTS: "/".join(endpoint + [EVENTS])
+            EVENTS: "/".join(endpoint + [EVENTS]),
+            VEHICLES: "/".join(endpoint, + [VEHICLES])
         }
 
     @staticmethod
