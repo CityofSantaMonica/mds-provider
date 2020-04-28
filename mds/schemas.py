@@ -43,6 +43,7 @@ class Schema():
 
         # acquire the schema
         self.schema_type = schema_type
+        self.schema_key = STATUS_CHANGES if schema_type == EVENTS else schema_type
         self.ref = ref or mds.github.MDS_DEFAULT_REF
 
         try:
@@ -61,7 +62,7 @@ class Schema():
             raise ValueError(f"Problem requesting schema from: {self.schema_url}")
 
         # override the $id for a non-standard ref
-        if self.ref is not mds.github.MDS_DEFAULT_REF:
+        if self.ref != mds.github.MDS_DEFAULT_REF:
             self.schema["$id"] = self.schema_url
 
     def __repr__(self):
@@ -98,7 +99,7 @@ class Schema():
         Get a dict(event_type=list(event_type_reason)) for this schema.
         """
         etr = {}
-        if self.schema_type is not STATUS_CHANGES:
+        if self.schema_key != STATUS_CHANGES:
             return etr
 
         if "allOf" in self.item_schema:
@@ -124,7 +125,7 @@ class Schema():
         """
         Get the schema for items in this schema's data array (e.g. the status_change or trip records).
         """
-        return self.schema["properties"]["data"]["properties"][self.schema_type]["items"]
+        return self.schema["properties"]["data"]["properties"][self.schema_key]["items"]
 
     @property
     def optional_item_fields(self):
@@ -205,6 +206,7 @@ class DataValidationError():
         self.path = list(validation_error.path)
         self.provider_schema = provider_schema
         self.schema_type = provider_schema.schema_type
+        self.schema_key = provider_schema.schema_key
         self.validation_error = validation_error
         self.validator = validation_error.validator
 
@@ -258,7 +260,7 @@ class DataValidationError():
         Describe an item-level error.
         """
         index = list(filter(lambda i: isinstance(i, int), self.path))[0]
-        path = f"{self.schema_type}[{index}]"
+        path = f"{self.schema_key}[{index}]"
 
         message = self.message.lower()
         if "is valid under each of" in message:
