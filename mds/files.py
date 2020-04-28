@@ -2,11 +2,9 @@
 Work with MDS Provider data in JSON files.
 """
 
-import csv
 import datetime
 import hashlib
 import json
-import os
 import pathlib
 import urllib
 
@@ -128,7 +126,12 @@ class ConfigFile(BaseFile):
 
         # set default attributes
         else:
-            defaults = [("auth_type", "Bearer"), ("headers", {}), ("version", Version.mds_lower()), ("mds_api_suffix", None)]
+            defaults = [
+                ("auth_type", "Bearer"),
+                ("headers", {}),
+                ("version", Version.mds_lower()),
+                ("mds_api_suffix", None)
+            ]
             for _field, _default in defaults:
                 setattr(self, _field, _default)
 
@@ -539,7 +542,7 @@ class DataFile(BaseFile):
                 With flatten=True, a (Version, list) tuple.
 
             list
-                With flatten=False, a list of (Version, list) tuples with length equal to the 
+                With flatten=False, a list of (Version, list) tuples with length equal to the
                 total number of payloads across all sources.
         """
         record_type = self._record_type_or_raise(record_type)

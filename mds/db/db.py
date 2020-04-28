@@ -7,7 +7,6 @@ import json
 import sqlalchemy
 
 from ..db import loaders
-from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
 
@@ -47,7 +46,9 @@ def data_engine(uri=None, **kwargs):
     """
     if uri is None and all(k in kwargs for k in ["user", "password", "host", "db"]):
         backend = kwargs.pop("backend", "postgresql")
-        user, password, host, port, db = kwargs["user"], kwargs["password"], kwargs["host"], kwargs.get("port", 5432), kwargs["db"]
+        user, password, host, port, db = (
+            kwargs["user"], kwargs["password"], kwargs["host"], kwargs.get("port", 5432), kwargs["db"]
+        )
         uri = f"{backend}://{user}:{password}@{host}:{port}/{db}"
     elif uri is None:
         raise KeyError("Provide either uri or ([backend], user, password, host, [port], db).")

@@ -85,8 +85,13 @@ class Provider():
                 Provider.__init__(self, provider)
 
     def __repr__(self):
-        ref = self.registry_ref or self.registry_path
-        return f"<mds.providers.Provider ('{ref}', '{self.provider_name}', '{str(self.provider_id)}', '{self.mds_api_url}')>"
+        ref, name, pid, url = (
+            self.registry_ref or self.registry_path,
+            self.provider_name,
+            str(self.provider_id),
+            self.mds_api_url
+        )
+        return f"<mds.providers.Provider ('{ref}', '{name}', '{pid}', '{url}')>"
 
     @property
     def endpoints(self):

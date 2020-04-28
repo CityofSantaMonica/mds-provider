@@ -91,32 +91,33 @@ class Client():
 
             end_time: datetime, int, optional
                 When version < 0.4.0 and requesting status_changes, filters for events occurring before the given time.
-                When version >= 0.4.0 and requesting trips, filters for trips ending within the hour of the given timestamp.
-                Invalid for other use-cases.
+                When version >= 0.4.0 and requesting trips, filters for trips ending within the hour of the given
+                timestamp. Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             event_time: datetime, int, optional
-                When version >= 0.4.0 and requesting status_changes, filters for events occurring within the hour of the given timestamp.
-                Invalid for other use-cases.
+                When version >= 0.4.0 and requesting status_changes, filters for events occurring within the hour of
+                the given timestamp. Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             max_end_time: datetime, int, optional
-                When version < 0.4.0 and requesting trips, filters for trips where end_time occurs before the given time.
-                Invalid for other use-cases.
+                When version < 0.4.0 and requesting trips, filters for trips where end_time occurs before the given
+                time. Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             min_end_time: datetime, int, optional
-                when version < 0.4.0 and requesting trips, filters for trips where end_time occurs at or after the given time.
-                Invalid for other use-cases.
+                when version < 0.4.0 and requesting trips, filters for trips where end_time occurs at or after the
+                given time. Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data.
+                False to request only the first page.
                 Unsupported for version >= 0.4.0.
 
             start_time: datetime, int, optional
-                When version < 0.4.0 and requesting status_changes, filters for events occuring at or after the given time.
-                Invalid for other use-cases.
+                When version < 0.4.0 and requesting status_changes, filters for events occuring at or after
+                the given time. Invalid for other use-cases.
                 Should be a datetime or int UNIX milliseconds.
 
             rate_limit: int, optional
@@ -165,7 +166,10 @@ class Client():
         rate_limit = int(kwargs.pop("rate_limit", 0))
 
         # paging is only supported for status_changes and trips prior to version 0.4.0
-        paging_supported = (record_type in [STATUS_CHANGES, TRIPS] and version < _V040_) or record_type not in [STATUS_CHANGES, TRIPS]
+        paging_supported = any([
+            (record_type in [STATUS_CHANGES, TRIPS] and version < _V040_),
+            record_type not in [STATUS_CHANGES, TRIPS]
+        ])
         paging = paging_supported and bool(kwargs.pop("paging", True))
 
         if not hasattr(provider, "headers"):
@@ -204,7 +208,8 @@ class Client():
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data.
+                False to request only the first page.
                 Unsupported for version >= 0.4.0.
 
             rate_limit: int, optional
@@ -263,7 +268,8 @@ class Client():
                 Should be a datetime or int UNIX milliseconds.
 
             paging: bool, optional
-                When version < 0.4.0, True (default) to follow paging and request all available data. False to request only the first page.
+                When version < 0.4.0, True (default) to follow paging and request all available data.
+                False to request only the first page.
                 Unsupported for version >= 0.4.0,
 
             rate_limit: int, optional

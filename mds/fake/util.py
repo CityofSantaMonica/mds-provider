@@ -49,7 +49,7 @@ def random_string(k, chars=None):
             The generated string.
     """
     if chars is None:
-        chars = string.ascii_uppercase + string.digits 
+        chars = string.ascii_uppercase + string.digits
     return "".join(random.choices(chars, k=k))
 
 

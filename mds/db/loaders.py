@@ -103,9 +103,15 @@ class DataFrame():
         # now insert from the temp table to the actual table
         with engine.begin() as conn:
             if record_type in [STATUS_CHANGES, EVENTS]:
-                query = sql.insert_status_changes_from(temp, table, on_conflict_update=on_conflict_update, version=version)
+                query = sql.insert_status_changes_from(temp,
+                                                       table,
+                                                       version=version,
+                                                       on_conflict_update=on_conflict_update)
             elif record_type == TRIPS:
-                query = sql.insert_trips_from(temp, table, on_conflict_update=on_conflict_update, version=version)
+                query = sql.insert_trips_from(temp,
+                                              table,
+                                              version=version,
+                                              on_conflict_update=on_conflict_update)
             if query is not None:
                 # move data using query and delete temp table
                 conn.execute(query)

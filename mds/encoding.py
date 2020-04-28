@@ -33,7 +33,7 @@ class JsonEncoder(json.JSONEncoder):
                 Configure how dates are formatted using one of:
                 * unix: format dates as a numeric offset from Unix epoch (default, Version-aware)
                 * iso8601: format dates as ISO 8601 strings
-                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds, etc.)
+                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds)
                 * python format string: custom format
 
             version: str, Version, optional
@@ -88,7 +88,7 @@ class TimestampEncoder():
                 Configure how dates are formatted using one of:
                 * unix: format dates as a numeric offset from Unix epoch (default, Version-aware)
                 * iso8601: format dates as ISO 8601 strings
-                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds, etc.)
+                * python timespec: format dates as ISO 8601 strings to the specified component (hours, minutes, seconds)
                 * python format string: custom format
 
             version: str, Version, optional

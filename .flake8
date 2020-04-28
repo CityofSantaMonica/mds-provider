@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 120
+ignore = 
+    # whitespace after/before square brackets
+    E201,
+    E202,
+    # whitespace after comma
+    E231,
+    # bare except
+    E722,
+    # do not assign lambda expression
+    E731

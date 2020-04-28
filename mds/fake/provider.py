@@ -134,7 +134,7 @@ class ProviderDataGenerator():
 
         # partition the devices into inactive and active
         # inactive will only get start/end service events in the same location
-        inactive_devices = random.sample(devices, int(len(devices)*inactivity))
+        inactive_devices = random.sample(devices, int(len(devices) * inactivity))
         inactive_starts = self.start_service(inactive_devices, start_time)
         inactive_locations = [e[EVENT_LOC] for e in inactive_starts]
         inactive_ends = self.end_service(inactive_devices, end_time, inactive_locations)
@@ -409,7 +409,7 @@ class ProviderDataGenerator():
         # random trip duration (in seconds)
         # the gamma distribution is referenced in the literature,
         # see: https://static.tti.tamu.edu/tti.tamu.edu/documents/17-1.pdf
-        # experimenting with the scale factors led to these parameterizations, * 60 to get seconds
+        # experimenting with the scale factors led to this parameterization, * 60 to get seconds
         alpha, beta = 3, 4.5
         trip_duration = random.gammavariate(alpha, beta) * 60
 
@@ -454,14 +454,14 @@ class ProviderDataGenerator():
         # add a standard_cost?
         if random.choice([True, False]):
             # $1.00 to start and $0.15 a minute thereafter
-            trip.update(standard_cost=(100 + (math.floor(trip_duration/60) - 1) * 15))
+            trip.update(standard_cost=(100 + (math.floor(trip_duration / 60) - 1) * 15))
 
         # add an actual cost?
         if random.choice([True, False]):
             # randomize an actual_cost
             # $0.75 - $1.50 to start, and $0.12 - $0.20 a minute thereafter...
             start, rate = random.randint(75, 150), random.randint(12, 20)
-            trip.update(actual_cost=(start + (math.floor(trip_duration/60) - 1) * rate))
+            trip.update(actual_cost=(start + (math.floor(trip_duration / 60) - 1) * rate))
 
         # end the trip
         status_changes.append(self.end_trip(device,
@@ -562,10 +562,10 @@ class ProviderDataGenerator():
                 The device that has the low battery.
 
             event_time: datetime
-                The time when the event occured.
+                The time when the event occurred.
 
             event_location: GeoJSON Feature
-                The where location the event occured.
+                The where location the event occurred.
 
         Returns:
             dict
@@ -605,7 +605,7 @@ class ProviderDataGenerator():
         for device in devices:
             if isinstance(event_times, datetime.datetime):
                 # how many seconds until the next hour?
-                diff = (60 - event_times.minute - 1)*60 + (60 - event_times.second)
+                diff = (60 - event_times.minute - 1) * 60 + (60 - event_times.second)
                 # random datetime between event_times and then
                 event_time = util.random_date_from(event_times, max_td=datetime.timedelta(seconds=diff))
             elif len(event_times) == len(devices):
@@ -637,10 +637,10 @@ class ProviderDataGenerator():
                 The device that was recharged.
 
             event_time: datetime
-                The time when the event occured.
+                The time when the event occurred.
 
             event_location: GeoJSON Feature
-                The where location the event occured.
+                The where location the event occurred.
 
         Returns:
             dict
@@ -678,10 +678,10 @@ class ProviderDataGenerator():
                 See https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider#event-types
 
             event_time: datetime
-                The time when the event occured.
+                The time when the event occurred.
 
             event_location: GeoJSON Feature
-                The location where the event occured.
+                The location where the event occurred.
 
             Additional keyword parameters are passed into the event as attributes.
 
@@ -701,8 +701,10 @@ class ProviderDataGenerator():
         """
         Determine if device has a battery.
         """
-        return BATTERY in device or \
-               any("electric" in pt for pt in device[PROPULSION]) if PROPULSION in device else False
+        return any([
+            BATTERY in device,
+            any("electric" in pt for pt in device[PROPULSION]) if PROPULSION in device else False
+        ])
 
     def recharge_battery(self, device):
         """

@@ -56,8 +56,6 @@ class Schema():
         self.schema_url = mds.github.schema_url(schema_type, self.ref)
 
         try:
-            from .files import DataFile
-            # load_payloads always returns a list, so take the first item from that list as the schema
             self.schema = requests.get(self.schema_url).json()
         except:
             raise ValueError(f"Problem requesting schema from: {self.schema_url}")
@@ -189,14 +187,14 @@ class DataValidationError():
     def __init__(self, validation_error, instance, provider_schema):
         """
         Initialize a new validation error instance.
-        
+
         Parameters:
             validation_error: jsonschema.exceptions.ValidationError
                 The error raised by validation.
-                
+
             instance: dict
                 The MDS Provider data object under validation.
-                
+
             provider_schema: Schema
                 The schema instance used as the basis for validation.
         """
@@ -260,7 +258,6 @@ class DataValidationError():
         Describe an item-level error.
         """
         index = list(filter(lambda i: isinstance(i, int), self.path))[0]
-        item = self.original_instance["data"][self.schema_type][index]
         path = f"{self.schema_type}[{index}]"
 
         message = self.message.lower()

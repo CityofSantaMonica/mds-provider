@@ -90,8 +90,7 @@ def is_pre_mds_040(ref) -> bool:
     try:
         if ref < Version('0.4.0'):
             return True
-
         return False
-    except e:
+    except Exception as e:
         print(f"Unable to determine MDS version from '{ref}', assuming 0.4.0 or greater. Error: {e}")
         return False

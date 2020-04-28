@@ -6,7 +6,7 @@ from ..schemas import STATUS_CHANGES, TRIPS
 from ..versions import UnsupportedVersionError, Version
 
 
-_COMMON_INSERTS= [
+_COMMON_INSERTS = [
     "provider_id",
     "provider_name",
     "device_id",
