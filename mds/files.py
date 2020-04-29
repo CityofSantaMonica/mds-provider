@@ -13,7 +13,7 @@ import pandas as pd
 
 from .encoding import JsonEncoder, TimestampDecoder, TimestampEncoder
 from .providers import Provider
-from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS, EVENTS, Schema
+from .schemas import SCHEMA_TYPES, STATUS_CHANGES, TRIPS, EVENTS, VEHICLES, Schema
 from .versions import UnexpectedVersionError, Version
 
 
@@ -565,11 +565,22 @@ class DataFile(BaseFile):
         # collect versions and data from each payload
         payload_key = Schema(record_type).schema_key
         _payloads = []
+
         for payload in payloads:
             if not isinstance(payload, list):
                 payload = [payload]
+
             for page in payload:
-                _payloads.append((page["version"], page["data"][payload_key]))
+                data = page["data"][payload_key]
+
+                # insert last_updated and ttl data from outer payload into each vehicle record
+                if record_type == VEHICLES:
+                    last_updated, ttl = page["last_updated"], page["ttl"]
+                    for item in data:
+                        item["last_updated"] = last_updated
+                        item["ttl"] = ttl
+
+                _payloads.append((page["version"], data))
 
         if flatten:
             if not all([Version(v) == version for v,_ in _payloads]):
@@ -610,6 +621,8 @@ class DataFile(BaseFile):
             time_key = "event_time"
         elif record_type == TRIPS:
             time_key = "end_time"
+        elif record_type == VEHICLES:
+            time_key = "last_event_time"
 
         times = [d[time_key] for p in payloads for d in p["data"][payload_key]]
 
