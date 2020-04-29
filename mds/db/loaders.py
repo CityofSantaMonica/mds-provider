@@ -9,7 +9,7 @@ import pandas as pd
 from ..db import sql
 from ..fake import util
 from ..files import DataFile
-from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
+from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, VEHICLES, Schema
 from ..versions import UnexpectedVersionError, Version
 
 
@@ -111,6 +111,11 @@ class DataFrame():
                                               table,
                                               version=version,
                                               on_conflict_update=on_conflict_update)
+            elif record_type == VEHICLES:
+                query = sql.insert_vehicles_from(temp,
+                                                 table,
+                                                 version=version,
+                                                 on_conflict_update=on_conflict_update)
             if query is not None:
                 # move data using query and delete temp table
                 conn.execute(query)
@@ -269,15 +274,20 @@ class Payloads(Records):
                 raise UnexpectedVersionError(payload["version"], version)
 
             records = payload["data"][payload_key]
+
+            # insert last_updated and ttl data from outer payload into each vehicle record
+            if record_type == VEHICLES:
+                last_updated, ttl = payload["last_updated"], payload["ttl"]
+                for item in records:
+                    item["last_updated"] = last_updated
+                    item["ttl"] = ttl
+
             super().load(records, **kwargs)
 
     @classmethod
     def can_load(cls, source):
         """
         True if source is one or more MDS Provider payload dicts.
-        """
-        """
-        True if source is one or more MDS Provider record dicts.
         """
         if isinstance(source, dict):
             source = [source]

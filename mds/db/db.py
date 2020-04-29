@@ -7,7 +7,7 @@ import json
 import sqlalchemy
 
 from ..db import loaders
-from ..schemas import STATUS_CHANGES, TRIPS
+from ..schemas import STATUS_CHANGES, TRIPS, VEHICLES
 from ..versions import Version
 
 
@@ -264,7 +264,8 @@ class Database():
 
             drop_duplicates: list, optional
                 List of column names used to drop duplicate records before load.
-                By default, ["provider_id", "trip_id"]
+                By default, ["provider_id", "trip_id"].
+                If None, don't drop any records.
 
             Additional keyword arguments are passed-through to load().
 
@@ -300,6 +301,50 @@ class Database():
         Since events have the same structure as status_changes, this method just proxies to load_status_changes().
         """
         return self.load_status_changes(source, **kwargs)
+
+    def load_vehicles(self, source, **kwargs):
+        """
+        Load MDS vehicles data.
+
+        Parameters:
+            source: dict, list, str, Path, pandas.DataFrame
+                See load() for supported source types.
+
+            table: str, optional
+                The name of the table to load data to, by default vehicles.
+
+            before_load: callable(df=DataFrame, version=Version): DataFrame, optional
+                Callback executed on the incoming DataFrame and Version.
+                Should return the final DataFrame for loading.
+
+            drop_duplicates: list, optional
+                List of column names used to drop duplicate records before load.
+
+            Additional keyword arguments are passed-through to load().
+
+        Return:
+            Database
+                self
+        """
+        table = kwargs.pop("table", VEHICLES)
+        before_load = kwargs.pop("before_load", lambda df,v: df)
+        drop_duplicates = kwargs.pop("drop_duplicates", None)
+
+        def _before_load(df, version):
+            """
+            Helper converts JSON cols and ensures optional cols exist
+            """
+            if drop_duplicates:
+                df.drop_duplicates(subset=drop_duplicates, keep="last", inplace=True)
+
+            null_cols = ["current_location", "battery_pct", "last_updated", "ttl"]
+            df = self._add_missing_cols(df, null_cols)
+
+            self._json_cols_tostring(df, ["last_event_location", "current_location"])
+
+            return before_load(df, version)
+
+        return self.load(source, VEHICLES, table, before_load=_before_load, **kwargs)
 
     @staticmethod
     def _json_cols_tostring(df, cols):
