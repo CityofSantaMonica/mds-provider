@@ -11,7 +11,7 @@ import dateutil.parser
 import shapely.geometry
 
 import mds.geometry
-from .versions import UnsupportedVersionError, Version
+from .versions import Version
 
 
 class JsonEncoder(json.JSONEncoder):
@@ -40,8 +40,7 @@ class JsonEncoder(json.JSONEncoder):
                 The MDS version to target.
         """
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
         self.date_format = kwargs.pop("date_format", "unix")
         self.timestamp_encoder = TimestampEncoder(date_format=self.date_format, version=self.version)
@@ -97,8 +96,7 @@ class TimestampEncoder():
         self.date_format = kwargs.get("date_format", "unix")
 
         self.version = Version(kwargs.get("version", Version.mds_lower()))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
     def __repr__(self):
         return f"<mds.encoding.TimestampEncoder ('{self.version}', '{self.date_format}')>"
@@ -136,8 +134,7 @@ class TimestampDecoder():
                 The MDS version to target.
         """
         self.version = Version(kwargs.get("version", Version.mds_lower()))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
     def __repr__(self):
         return f"<mds.encoding.TimestampDecoder ('{self.version}')>"

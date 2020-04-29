@@ -9,7 +9,7 @@ import requests
 
 import mds.geometry
 import mds.github
-from .versions import UnsupportedVersionError, Version
+from .versions import Version
 
 
 STATUS_CHANGES = "status_changes"
@@ -51,8 +51,8 @@ class Schema():
         except:
             pass
         finally:
-            if isinstance(self.ref, Version) and self.ref.unsupported:
-                raise UnsupportedVersionError(self.ref)
+            if isinstance(self.ref, Version):
+                self.ref.raise_if_unsupported()
 
         self.schema_url = mds.github.schema_url(schema_type, self.ref)
 

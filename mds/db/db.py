@@ -8,7 +8,7 @@ import sqlalchemy
 
 from ..db import loaders
 from ..schemas import STATUS_CHANGES, TRIPS
-from ..versions import UnsupportedVersionError, Version
+from ..versions import Version
 
 
 def data_engine(uri=None, **kwargs):
@@ -110,8 +110,7 @@ class Database():
                 When an unsupported MDS version is specified.
         """
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
         self.stage_first = kwargs.pop("stage_first", True)
         self.engine = kwargs.pop("engine", data_engine(uri=uri, **kwargs))
@@ -180,8 +179,7 @@ class Database():
                 self
         """
         version = Version(kwargs.pop("version", self.version))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
 
         if "stage_first" not in kwargs:
             kwargs["stage_first"] = self.stage_first

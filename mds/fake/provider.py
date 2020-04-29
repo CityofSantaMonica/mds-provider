@@ -12,7 +12,7 @@ import scipy.stats
 import mds.geometry
 from ..fake import geometry, util
 from ..schemas import Schema
-from ..versions import UnsupportedVersionError, Version
+from ..versions import Version
 
 
 BATTERY = "battery_pct"
@@ -49,8 +49,7 @@ class ProviderDataGenerator():
                 The MDS version to target. By default, use Version.mds_lower().
         """
         self.version = Version(kwargs.pop("version", Version.mds_lower()))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
         self.boundary = mds.geometry.parse_boundary(boundary)
         self.trips_schema = Schema.trips(self.version)

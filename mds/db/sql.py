@@ -3,7 +3,7 @@ Generate SQL for MDS Provider database CRUD.
 """
 
 from ..schemas import STATUS_CHANGES, TRIPS
-from ..versions import UnsupportedVersionError, Version
+from ..versions import Version
 
 
 _COMMON_INSERTS = [
@@ -72,8 +72,7 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         str
     """
     version = Version(kwargs.pop("version", Version.mds_lower()))
-    if version.unsupported:
-        raise UnsupportedVersionError(version)
+    version.raise_if_unsupported()
 
     on_conflict_update = kwargs.pop("on_conflict_update", None)
     on_conflict = on_conflict_statement(on_conflict_update)
@@ -134,8 +133,7 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         str
     """
     version = Version(kwargs.pop("version", Version.mds_lower()))
-    if version.unsupported:
-        raise UnsupportedVersionError(version)
+    version.raise_if_unsupported()
 
     on_conflict_update = kwargs.pop("on_conflict_update", None)
     on_conflict = on_conflict_statement(on_conflict_update)

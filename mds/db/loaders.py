@@ -10,7 +10,7 @@ from ..db import sql
 from ..fake import util
 from ..files import DataFile
 from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
-from ..versions import UnexpectedVersionError, UnsupportedVersionError, Version
+from ..versions import UnexpectedVersionError, Version
 
 
 class DataFrame():
@@ -78,8 +78,7 @@ class DataFrame():
         engine = kwargs.pop("engine")
 
         version = Version(kwargs.get("version", Version.mds_lower()))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
 
         before_load = kwargs.get("before_load")
         stage_first = kwargs.get("stage_first")

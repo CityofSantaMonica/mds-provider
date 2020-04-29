@@ -9,7 +9,7 @@ from ..encoding import TimestampEncoder, TimestampDecoder
 from ..files import ConfigFile
 from ..providers import Provider
 from ..schemas import STATUS_CHANGES, TRIPS, EVENTS, Schema
-from ..versions import UnsupportedVersionError, Version
+from ..versions import Version
 from .auth import auth_types
 
 
@@ -40,8 +40,7 @@ class Client():
 
         # look for version first in config, then kwargs, then use default
         self.version = Version(config.pop("version", kwargs.pop("version", Version.mds_lower())))
-        if self.version.unsupported:
-            raise UnsupportedVersionError(self.version)
+        self.version.raise_if_unsupported()
 
         # merge config with the rest of kwargs
         self.config = { **config, **kwargs }
@@ -133,8 +132,7 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         version = Version(kwargs.pop("version", self.version))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
 
         if version < _V040_:
             if record_type not in [STATUS_CHANGES, TRIPS]:
@@ -225,8 +223,7 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         version = Version(kwargs.get("version", self.version))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
 
         Client._params_check(STATUS_CHANGES, version, **kwargs)
 
@@ -285,8 +282,7 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         version = Version(kwargs.get("version", self.version))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
 
         Client._params_check(TRIPS, version, **kwargs)
 
@@ -321,11 +317,10 @@ class Client():
                 The non-empty payloads (e.g. payloads with data records), one for each requested page.
         """
         version = Version(kwargs.get("version", self.version))
-        if version.unsupported:
-            raise UnsupportedVersionError(version)
+        version.raise_if_unsupported()
+
         if version < _V040_:
-            print("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
-            raise UnsupportedVersionError(version)
+            raise ValueError("The events endpoint is only supported in MDS Version 0.4.0 and beyond.")
 
         Client._params_check(EVENTS, version, **kwargs)
 

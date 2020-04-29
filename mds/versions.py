@@ -130,6 +130,13 @@ class Version():
         else:
             return self._version.release
 
+    def raise_if_unsupported(self):
+        """
+        Raise an UnsupportedVersionError if this Version is not currently supported.
+        """
+        if self.unsupported:
+            raise UnsupportedVersionError(self)
+
     def __eq__(self, version2):
         return self._version.__eq__(version2._version)
 
