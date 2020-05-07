@@ -102,7 +102,7 @@ class Provider():
             STATUS_CHANGES: "/".join(endpoint + [STATUS_CHANGES]),
             TRIPS: "/".join(endpoint + [TRIPS]),
             EVENTS: "/".join(endpoint + [EVENTS]),
-            VEHICLES: "/".join(endpoint, + [VEHICLES])
+            VEHICLES: "/".join(endpoint + [VEHICLES])
         }
 
     @staticmethod
