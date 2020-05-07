@@ -138,22 +138,40 @@ class Version():
             raise UnsupportedVersionError(self)
 
     def __eq__(self, version2):
-        return self._version.__eq__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__eq__(version2._version)
+        else:
+            return str(self) == str(version2)
 
     def __ge__(self, version2):
-        return self._version.__ge__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__ge__(version2._version)
+        else:
+            return str(self) >= str(version2)
 
     def __gt__(self, version2):
-        return self._version.__gt__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__gt__(version2._version)
+        else:
+            return str(self) > str(version2)
 
     def __le__(self, version2):
-        return self._version.__le__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__le__(version2._version)
+        else:
+            return str(self) <= str(version2)
 
     def __lt__(self, version2):
-        return self._version.__lt__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__lt__(version2._version)
+        else:
+            return str(self) < str(version2)
 
     def __ne__(self, version2):
-        return self._version.__ne__(version2._version)
+        if isinstance(version2, Version):
+            return self._version.__ne__(version2._version)
+        else:
+            return str(self) != str(version2)
 
     @classmethod
     def library(cls):
