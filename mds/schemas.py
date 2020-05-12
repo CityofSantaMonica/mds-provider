@@ -306,6 +306,7 @@ class DataValidator():
         self.schema = self._get_schema_instance_or_raise(schema, ref)
         self.ref = self.schema.ref
         self.schema_type = self.schema.schema_type
+        self.schema_key = self.schema.schema_key
 
     def __repr__(self):
         return f"<mds.schemas.DataValidator ('{self.ref}', '{self.schema_type}')>"
