@@ -24,7 +24,7 @@ class Schema():
     Represents a MDS Provider JSON Schema.
     """
 
-    def __init__(self, schema_type, ref=None):
+    def __init__(self, schema_type, ref=None, **kwargs):
         """
         Initialize a new Schema instance.
 
@@ -37,12 +37,18 @@ class Schema():
                 * git branch name
                 * git commit hash (long or short)
                 * version str or Version instance
+
+            acquire: bool, optional
+                Whether to immediately acquire the schema document from GitHub. The default is False.
         """
         if schema_type not in SCHEMA_TYPES:
             valid_types = ", ".join(SCHEMA_TYPES)
             raise ValueError(f"Invalid schema_type '{schema_type}'. Valid schema_types: {valid_types}")
 
-        # acquire the schema
+        # the underlying schema document is not acquired until necessary
+        self._schema = None
+
+        # configuration
         self.schema_type = schema_type
         self.schema_key = STATUS_CHANGES if schema_type == EVENTS else schema_type
         self.ref = ref or mds.github.MDS_DEFAULT_REF
@@ -57,17 +63,25 @@ class Schema():
 
         self.schema_url = mds.github.schema_url(schema_type, self.ref)
 
-        try:
-            self.schema = requests.get(self.schema_url).json()
-        except:
-            raise ValueError(f"Problem requesting schema from: {self.schema_url}")
-
-        # override the $id for a non-standard ref
-        if self.ref != mds.github.MDS_DEFAULT_REF:
-            self.schema["$id"] = self.schema_url
+        if kwargs.get("acquire"):
+            self._acquire()
 
     def __repr__(self):
         return f"<mds.schemas.Schema ('{self.schema_type}', '{self.ref}', '{self.schema_url}')>"
+
+    def _acquire(self):
+        """
+        On-demand, one-time acquisition of the schema document from GitHub.
+        """
+        if not self._schema:
+            try:
+                self._schema = requests.get(self.schema_url).json()
+            except:
+                raise ValueError(f"Problem requesting schema from: {self.schema_url}")
+            finally:
+                # override the $id for a non-standard ref
+                if self._schema and self.ref != mds.github.MDS_DEFAULT_REF:
+                    self._schema["$id"] = self.schema_url
 
     def validate(self, instance_source):
         """
@@ -83,15 +97,25 @@ class Schema():
             iterator
                 An iterator that yields validation errors.
         """
+        self._acquire()
         validator = DataValidator(self)
         for error in validator.validate(instance_source):
             yield error
+
+    @property
+    def schema(self):
+        """
+        Get the underlying schema document.
+        """
+        self._acquire()
+        return self._schema
 
     @property
     def event_types(self):
         """
         Get the list of valid event_type values for this schema.
         """
+        self._acquire()
         return list(self.event_type_reasons.keys())
 
     @property
@@ -102,6 +126,8 @@ class Schema():
         etr = {}
         if self.schema_key != STATUS_CHANGES:
             return etr
+
+        self._acquire()
 
         if "allOf" in self.item_schema:
             for allOf in self.item_schema["allOf"]:
@@ -126,6 +152,7 @@ class Schema():
         """
         Get the schema for items in this schema's data array (e.g. the status_change or trip records).
         """
+        self._acquire()
         return self.schema["properties"]["data"]["properties"][self.schema_key]["items"]
 
     @property
@@ -133,6 +160,7 @@ class Schema():
         """
         Returns the list of optional field names for items in the data array of this schema.
         """
+        self._acquire()
         item_props = self.item_schema["properties"].keys()
         return [ip for ip in item_props if ip not in self.required_item_fields]
 
@@ -141,6 +169,7 @@ class Schema():
         """
         Returns the list of required field names for items in the data array of this schema.
         """
+        self._acquire()
         return self.item_schema["required"]
 
     @property
@@ -148,6 +177,7 @@ class Schema():
         """
         Get the list of valid propulsion_type values for this schema.
         """
+        self._acquire()
         definition = self.schema["definitions"]["propulsion_type"]
         return definition["items"]["enum"]
 
@@ -156,34 +186,35 @@ class Schema():
         """
         Get the list of valid vehicle_type values for this schema.
         """
+        self._acquire()
         definition = self.schema["definitions"]["vehicle_type"]
         return definition["enum"]
 
     @classmethod
     def status_changes(cls, ref=None):
         """
-        Acquires the Status Changes schema.
+        Get the Status Changes schema.
         """
         return Schema(STATUS_CHANGES, ref)
 
     @classmethod
     def trips(cls, ref=None):
         """
-        Acquires the Trips schema.
+        Get the Trips schema.
         """
         return Schema(TRIPS, ref)
 
     @classmethod
     def events(cls, ref=None):
         """
-        Acquires the Events schema.
+        Get the Events schema.
         """
         return Schema(EVENTS, ref)
 
     @classmethod
     def vehicles(cls, ref=None):
         """
-        Acquires the Vehicles schema.
+        Get the Vehicles schema.
         """
         return Schema(VEHICLES, ref)
 
