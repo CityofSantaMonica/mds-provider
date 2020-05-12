@@ -14,6 +14,7 @@ from .auth import auth_types
 
 
 _V040_ = Version("0.4.0")
+_V041_ = Version("0.4.1")
 
 
 class Client():
@@ -163,9 +164,9 @@ class Client():
         provider = self._provider_or_raise(provider, **config)
         rate_limit = int(kwargs.pop("rate_limit", 0))
 
-        # paging is only supported for status_changes and trips prior to version 0.4.0
+        # paging is only supported for status_changes and trips prior to version 0.4.1
         paging_supported = any([
-            (record_type in [STATUS_CHANGES, TRIPS] and version < _V040_),
+            (record_type in [STATUS_CHANGES, TRIPS] and version < _V041_),
             record_type not in [STATUS_CHANGES, TRIPS]
         ])
         paging = paging_supported and bool(kwargs.pop("paging", True))
