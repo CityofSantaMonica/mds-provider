@@ -436,8 +436,8 @@ class Client():
         Checks if this page has a "data" property with a non-empty payload.
         """
         data = page["data"] if "data" in page else {"__payload__": []}
-        payload_key = Schema(record_type).schema_key
-        payload = data[payload_key] if payload_key in data else []
+        data_key = Schema(record_type).data_key
+        payload = data[data_key] if data_key in data else []
         print(f"Got payload with {len(payload)} {record_type}")
         return len(payload) > 0
 

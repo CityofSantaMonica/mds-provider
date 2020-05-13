@@ -306,8 +306,8 @@ class DataFile(BaseFile):
 
         # filter payloads with non-matching record_type
         if record_type in SCHEMA_TYPES:
-            payload_key = Schema(record_type).schema_key
-            sources = [p for p in sources if payload_key in p["data"]]
+            data_key = Schema(record_type).data_key
+            sources = [p for p in sources if data_key in p["data"]]
 
         if len(sources) == 0:
             return None
@@ -487,11 +487,11 @@ class DataFile(BaseFile):
         # filter out payloads with non-matching record_type
         if record_type:
             filtered = []
-            payload_key = Schema(record_type).schema_key
+            data_key = Schema(record_type).data_key
             for payload in data:
                 if isinstance(payload, list):
-                    filtered.extend(filter(lambda p: payload_key in p["data"], payload))
-                elif "data" in payload and payload_key in payload["data"]:
+                    filtered.extend(filter(lambda p: data_key in p["data"], payload))
+                elif "data" in payload and data_key in payload["data"]:
                     filtered.append(payload)
             data = filtered
 
@@ -563,7 +563,7 @@ class DataFile(BaseFile):
             version = Version(payloads[0]["version"])
 
         # collect versions and data from each payload
-        payload_key = Schema(record_type).schema_key
+        data_key = Schema(record_type).data_key
         _payloads = []
 
         for payload in payloads:
@@ -571,7 +571,7 @@ class DataFile(BaseFile):
                 payload = [payload]
 
             for page in payload:
-                data = page["data"][payload_key]
+                data = page["data"][data_key]
 
                 # insert last_updated and ttl data from outer payload into each vehicle record
                 if record_type == VEHICLES:
@@ -614,7 +614,7 @@ class DataFile(BaseFile):
             shadigest = hashlib.sha256(data).hexdigest()
             return f"{shadigest[0:7]}{extension}"
 
-        payload_key = Schema(record_type).schema_key
+        data_key = Schema(record_type).data_key
 
         # find time boundaries from the data
         if record_type in [STATUS_CHANGES, EVENTS]:
@@ -624,7 +624,7 @@ class DataFile(BaseFile):
         elif record_type == VEHICLES:
             time_key = "last_event_time"
 
-        times = [d[time_key] for p in payloads for d in p["data"][payload_key]]
+        times = [d[time_key] for p in payloads for d in p["data"][data_key]]
 
         if all([isinstance(t, datetime.datetime) for t in times]):
             start = min(times)
@@ -641,7 +641,7 @@ class DataFile(BaseFile):
             end = end + datetime.timedelta(hours=1)
 
         encoder = TimestampEncoder(date_format="%Y%m%dT%H0000Z")
-        providers = set([d["provider_name"] for p in payloads for d in p["data"][payload_key]])
+        providers = set([d["provider_name"] for p in payloads for d in p["data"][data_key]])
 
         return f"{'_'.join(providers)}_{record_type}_{encoder.encode(start)}_{encoder.encode(end)}{extension}"
 

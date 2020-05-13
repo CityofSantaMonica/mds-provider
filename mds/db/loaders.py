@@ -268,12 +268,12 @@ class Payloads(Records):
         if isinstance(source, dict):
             source = [source]
 
-        payload_key = Schema(record_type).schema_key
-        for payload in [p for p in source if payload_key in p["data"]]:
+        data_key = Schema(record_type).data_key
+        for payload in [p for p in source if data_key in p["data"]]:
             if version and version != Version(payload["version"]):
                 raise UnexpectedVersionError(payload["version"], version)
 
-            records = payload["data"][payload_key]
+            records = payload["data"][data_key]
 
             # insert last_updated and ttl data from outer payload into each vehicle record
             if record_type == VEHICLES:

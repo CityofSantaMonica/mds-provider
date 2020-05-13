@@ -50,7 +50,7 @@ class Schema():
 
         # configuration
         self.schema_type = schema_type
-        self.schema_key = STATUS_CHANGES if schema_type == EVENTS else schema_type
+        self.data_key = STATUS_CHANGES if schema_type == EVENTS else schema_type
         self.ref = ref or mds.github.MDS_DEFAULT_REF
 
         try:
@@ -124,7 +124,7 @@ class Schema():
         Get a dict(event_type=list(event_type_reason)) for this schema.
         """
         etr = {}
-        if self.schema_key != STATUS_CHANGES:
+        if self.data_key != STATUS_CHANGES:
             return etr
 
         self._acquire()
@@ -153,7 +153,7 @@ class Schema():
         Get the schema for items in this schema's data array (e.g. the status_change or trip records).
         """
         self._acquire()
-        return self.schema["properties"]["data"]["properties"][self.schema_key]["items"]
+        return self.schema["properties"]["data"]["properties"][self.data_key]["items"]
 
     @property
     def optional_item_fields(self):
@@ -245,7 +245,7 @@ class DataValidationError():
         self.path = list(validation_error.path)
         self.provider_schema = provider_schema
         self.schema_type = provider_schema.schema_type
-        self.schema_key = provider_schema.schema_key
+        self.data_key = provider_schema.data_key
         self.validation_error = validation_error
         self.validator = validation_error.validator
 
@@ -299,7 +299,7 @@ class DataValidationError():
         Describe an item-level error.
         """
         index = list(filter(lambda i: isinstance(i, int), self.path))[0]
-        path = f"{self.schema_key}[{index}]"
+        path = f"{self.data_key}[{index}]"
 
         message = self.message.lower()
         if "is valid under each of" in message:
@@ -337,7 +337,7 @@ class DataValidator():
         self.schema = self._get_schema_instance_or_raise(schema, ref)
         self.ref = self.schema.ref
         self.schema_type = self.schema.schema_type
-        self.schema_key = self.schema.schema_key
+        self.data_key = self.schema.data_key
 
     def __repr__(self):
         return f"<mds.schemas.DataValidator ('{self.ref}', '{self.schema_type}')>"
