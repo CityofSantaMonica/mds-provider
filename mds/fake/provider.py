@@ -55,6 +55,7 @@ class ProviderDataGenerator():
 
         self.boundary = mds.geometry.parse_boundary(boundary)
         self.trips_schema = Schema.trips(self.version)
+        self.status_schema = Schema.status_changes(self.version)
         self.speed = kwargs.get("speed", random.randint(4, 9))
 
         self.vehicle_types = kwargs.get("vehicle_types", self.trips_schema.vehicle_types)
@@ -661,13 +662,8 @@ class ProviderDataGenerator():
             event_location=event_location
         )
 
-    def status_change_event(self,
-                            device,
-                            event_type,
-                            event_type_reason,
-                            event_time,
-                            event_location,
-                            **kwargs):
+    def status_change_event(self, device, event_type=None, event_type_reason=None,
+                            event_time=None, event_location=None, **kwargs):
         """
         Create a status_change event from the provided data.
 
@@ -675,18 +671,16 @@ class ProviderDataGenerator():
             device: dict
                 The device that generated the event.
 
-            event_type:
+            event_type: str, optional
                 The type of status_change event.
-                See https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider#event-types
 
-            event_type_reason:
+            event_type_reason: str, optional
                 The reason for this type of status_change event.
-                See https://github.com/CityOfLosAngeles/mobility-data-specification/tree/master/provider#event-types
 
-            event_time: datetime
+            event_time: datetime, optional
                 The time when the event occurred.
 
-            event_location: GeoJSON Feature
+            event_location: GeoJSON Feature, optional
                 The location where the event occurred.
 
             Additional keyword parameters are passed into the event as attributes.
@@ -695,6 +689,15 @@ class ProviderDataGenerator():
             dict
                 A dict representation of the status_change data.
         """
+        if event_type is None or event_type_reason is None:
+            event_type, event_type_reason = self.event_pair(event_type, event_type_reason)
+
+        if event_time is None:
+            event_type = util.random_date_from(datetime.datetime.utcnow())
+
+        if event_location is None:
+            event_location = geometry.point_within(self.boundary)
+
         status_change = dict(event_type=event_type,
                              event_type_reason=event_type_reason,
                              event_time=event_time,
@@ -702,6 +705,96 @@ class ProviderDataGenerator():
                              publication_time=event_time)
 
         return {**device, **status_change, **kwargs}
+
+    def vehicle_status(self, device, event_type=None, event_type_reason=None,
+                       event_time=None, event_location=None, current_location=None,
+                       battery_pct=None, **kwargs):
+        """
+        Create a status event compatible with the vehicles endpoint.
+
+        Parameters:
+            device: dict
+                The device that generated the event.
+
+            event_type: str, optional
+                Event type of most recent status change.
+
+            event_type_reason: str, optional
+                Event type reason of most recent status change.
+
+            event_time: datetime, optional
+                Date/time when last status change occurred.
+
+            event_location: GeoJSON Feature, optional
+                Location of vehicle's last event.
+
+            current_location: GeoJSON Feature, optional
+                Current location of vehicle if different from last event.
+
+            battery_pct: decimal, optional
+                Percent battery charge of device, expressed between 0 and 1.
+
+            Additional keyword parameters are passed into the vehicle as attributes.
+
+        Returns:
+            dict
+                A dict representation of the vehicle status data.
+        """
+        if event_type is None or event_type_reason is None:
+            event_type, event_type_reason = self.event_pair(event_type, event_type_reason)
+
+        if event_time is None:
+            event_time = util.random_date_from(datetime.datetime.utcnow())
+
+        if event_location is None:
+            event_location = geometry.point_within(self.boundary)
+
+        last_status = dict(last_event_time=event_time,
+                           last_event_type=event_type,
+                           last_event_type_reason=event_type_reason,
+                           last_event_location=event_location)
+
+        if current_location:
+            last_status.update(current_location=current_location)
+
+        if battery_pct is not None:
+            last_status.update(battery_pct=battery_pct)
+
+        return {**device, **last_status, **kwargs}
+
+    def event_pair(self, event_type=None, event_type_reason=None):
+        """
+        Create a tuple (event_type, event_type_reason).
+
+        If one or both of the event_type and event_type_reason are not provided,
+        valid value(s) will be chosen.
+
+        Parameters:
+            event_type: str, optional
+                Event type of a status change.
+
+            event_type_reason: str, optional
+                Event type reason of a status change.
+
+        Returns:
+            tuple(str, str)
+                A tuple representation of the event data.
+        """
+        etrs = self.status_schema.event_type_reasons
+
+        if event_type is None and event_type_reason:
+            # invert the {event_type:[event_type_reason]} dict into {event_type_reason:event_type}
+            reason_types = dict([(v,k) for k,reason_list in etrs.items() for v in reason_list])
+            event_type = reason_types[event_type_reason]
+        elif event_type and event_type_reason is None:
+            # pick a random reason for this event_type
+            event_type_reason = random.choice(etrs[event_type])
+        else:
+            # pick a random event_type and corresponding reason
+            event_type = random.choice(etrs.keys())
+            event_type_reason = random.choice(etrs[event_type])
+
+        return (event_type, event_type_reason)
 
     def has_battery(self, device):
         """
@@ -727,16 +820,27 @@ class ProviderDataGenerator():
         if self.has_battery(device):
             device[BATTERY] = (device[BATTERY] - amount) * (1 - rate)
 
-    def make_payload(self, status_changes=None, trips=None):
+    def make_payload(self, **kwargs):
         """
-        Craft the full MDS Provider payload for either status_changes or trips.
+        Craft a full MDS Provider payload.
         """
+        events = kwargs.get("events")
+        status_changes = kwargs.get("status_changes")
+        trips = kwargs.get("trips")
+        vehicles = kwargs.get("vehicles")
+
         payload = dict(version=str(self.version))
 
-        if status_changes is not None:
-            payload["data"] = dict(status_changes=status_changes)
+        if events or status_changes:
+            data = events or status_changes
+            payload["data"] = dict(status_changes=data)
 
-        if trips is not None:
+        if trips:
             payload["data"] = dict(trips=trips)
+
+        if vehicles:
+            payload["last_updated"] = datetime.datetime.utcnow()
+            payload["ttl"] = random.randint(0, 300)
+            payload["data"] = dict(vehicles=vehicles)
 
         return payload
