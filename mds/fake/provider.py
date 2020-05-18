@@ -19,14 +19,13 @@ BATTERY = "battery_pct"
 EVENT_LOC = "event_location"
 EVENT_TIME = "event_time"
 PROPULSION = "propulsion_type"
+TD_HOUR = datetime.timedelta(seconds=3600)
 
 
 class ProviderDataGenerator():
     """
     Generates fake MDS Provider data.
     """
-
-    TD_HOUR = datetime.timedelta(seconds=3600)
 
     def __init__(self, boundary, **kwargs):
         """
@@ -239,7 +238,7 @@ class ProviderDataGenerator():
                 status, trip = self.device_trip(device,
                                                 event_location=location,
                                                 reference_time=current_time,
-                                                max_td=self.TD_HOUR)
+                                                max_td=TD_HOUR)
                 changes.extend(status)
                 trips.append(trip)
                 # update the device's time and location from the trip's end event
