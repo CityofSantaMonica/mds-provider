@@ -87,7 +87,7 @@ class ProviderDataGenerator():
 
         Returns:
             list
-                A list of dict each representing a device for the provider.
+                A list of dict, each representing a device for the provider.
         """
         devices = []
         provider_id = provider_id or uuid.uuid4()
@@ -282,6 +282,7 @@ class ProviderDataGenerator():
         # device placement starts before operation open time
         # -7200 seconds == previous 2 hours from start
         offset = datetime.timedelta(seconds=-7200)
+
         for device in devices:
             # somewhere in the previous :offset:
             event_time = util.random_date_from(start_time, min_td=offset)
@@ -289,12 +290,11 @@ class ProviderDataGenerator():
             feature = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
 
             # the status_change details
-            service_start = \
-                self.status_change_event(device,
-                                         event_type="available",
-                                         event_type_reason="service_start",
-                                         event_time=event_time,
-                                         event_location=feature)
+            service_start = self.status_change_event(device,
+                                                     event_type="available",
+                                                     event_type_reason="service_start",
+                                                     event_time=event_time,
+                                                     event_location=feature)
 
             # reset the battery for electric devices
             if self.has_battery(device):
@@ -328,6 +328,7 @@ class ProviderDataGenerator():
         # device pickup likely doesn't happen right at close time
         # +7200 seconds == next 2 hours after close
         offset = datetime.timedelta(seconds=7200)
+
         for device in devices:
             # somewhere in the next :offset:
             event_time = util.random_date_from(end_time, max_td=offset)
@@ -341,12 +342,11 @@ class ProviderDataGenerator():
 
             # the status_change details
             feature = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
-            service_end = \
-                self.status_change_event(device,
-                                         event_type="removed",
-                                         event_type_reason="service_end",
-                                         event_time=event_time,
-                                         event_location=feature)
+            service_end = self.status_change_event(device,
+                                                   event_type="removed",
+                                                   event_type_reason="service_end",
+                                                   event_time=event_time,
+                                                   event_location=feature)
 
             # combine with device details and append
             status_changes.append({**device, **service_end})
