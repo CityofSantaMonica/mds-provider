@@ -221,7 +221,7 @@ class DataFile(BaseFile):
 
     def __repr__(self):
         return "".join((
-            f"<mds.files.DataFile (",
+            "<mds.files.DataFile (",
             ", ".join([f"'{s}'" for s in [self.record_type]]),
             ")>"
         ))

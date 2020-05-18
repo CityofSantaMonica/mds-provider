@@ -241,7 +241,7 @@ class DataValidationError():
         Describe a page-level error.
         """
         messages = [
-            f"Page error"
+            "Page error"
         ]
 
         if len(self.path) > 0:

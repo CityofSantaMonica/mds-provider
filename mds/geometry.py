@@ -39,7 +39,7 @@ def parse_boundary(boundary_file, **kwargs):
     # meld all the features together into a unified polygon
     features = fiona.open(boundary_file)
     polygons = [shapely.geometry.shape(feature["geometry"]) for feature in features]
-    polygons_meld = shapely.ops.cascaded_union(polygons)
+    polygons_meld = shapely.ops.unary_union(polygons)
 
     return shapely.geometry.Polygon(polygons_meld)
 

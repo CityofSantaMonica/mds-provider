@@ -487,7 +487,7 @@ class Client():
 
             # less than --> earlier in time
             if start < two_weeks or end < two_weeks:
-                raise ValueError(f"The 'start_time' and 'end_time' query parameters must be within two weeks from now.")
+                raise ValueError("The 'start_time' and 'end_time' query parameters must be within two weeks from now.")
 
         elif record_type == VEHICLES:
             # currently no vehicles specific param checks
