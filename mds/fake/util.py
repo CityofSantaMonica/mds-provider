@@ -7,9 +7,7 @@ import random
 import string
 
 
-def random_date_from(date,
-                     min_td=datetime.timedelta(seconds=0),
-                     max_td=datetime.timedelta(seconds=0)):
+def random_date_from(date, min_td=None, max_td=None):
     """
     Produces a datetime at a random offset from date.
 
@@ -17,19 +15,29 @@ def random_date_from(date,
         date: datetime
             The reference datetime.
 
-        min_td: timedelta, optional
-            The minimum offset from the reference datetime (could be negative).
+        min_td: int, timedelta, optional
+            Number of seconds or timedelta of the minimum offset from the reference datetime (could be negative).
 
-        max_td: timedelta, optional
-            The maximum offset from the reference datetime (could be negative).
+        max_td: int, timedelta, optional
+            Number of seconds or timedelta of the maximum offset from the reference datetime (could be negative).
 
     Return:
         datetime
             A new_date such that (date + min_td) <= new_date < (date + max_td).
     """
-    min_s = min(min_td.total_seconds(), max_td.total_seconds())
-    max_s = max(min_td.total_seconds(), max_td.total_seconds())
-    offset = random.uniform(min_s, max_s)
+    if isinstance(min_td, datetime.timedelta):
+        min_td = min_td.total_seconds()
+    if isinstance(max_td, datetime.timedelta):
+        max_td = max_td.total_seconds()
+
+    if min_td is None and max_td is None:
+        min_td, max_td = random.randint(-3600, 3600), random.randint(-3600, 3600)
+    elif min_td is not None and max_td is None:
+        max_td = random.randint(min_td, 3600)
+    elif min_td is None and max_td is not None:
+        min_td = random.randint(0, max_td)
+
+    offset = random.uniform(min_td, max_td)
     return date + datetime.timedelta(seconds=offset)
 
 
