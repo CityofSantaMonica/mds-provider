@@ -35,14 +35,17 @@ class ProviderDataGenerator():
             boundary: str
                 The path to a geoJSON file with boundary geometry within which to generate data.
 
+            currency: str, optional
+                When cost information is generated, use this ISO 4217 Alphabetic Currency Code.
+
             speed: int, optional
                 The average speed of devices in meters/second.
 
-            vehicle_types: str, list, optional
-                Comma-separated string or list of vehicle_types to use for generation.
-
             propulsion_types: str, list, optional.
                 Comma-separated string or list of propulsion_types to use for generation.
+
+            vehicle_types: str, list, optional
+                Comma-separated string or list of vehicle_types to use for generation.
 
             version: str, Version, optional
                 The MDS version to target. By default, use Version.mds_lower().
@@ -61,6 +64,8 @@ class ProviderDataGenerator():
         self.propulsion_types = kwargs.get("propulsion_types", self.trips_schema.propulsion_types)
         if isinstance(self.propulsion_types, str):
             self.propulsion_types = self.propulsion_types.split(",")
+
+        self.currency = kwargs.get("currency", "USD")
 
     def __repr__(self):
         return f"<mds.fake.ProviderDataGenerator ('{self.version}')>"
@@ -460,6 +465,9 @@ class ProviderDataGenerator():
             # $0.75 - $1.50 to start, and $0.12 - $0.20 a minute thereafter...
             start, rate = random.randint(75, 150), random.randint(12, 20)
             trip.update(actual_cost=(start + (math.floor(trip_duration / 60) - 1) * rate))
+
+        if "standard_cost" or "actual_cost" in trip and version >= Version("0.4.0"):
+            trip.update(currency=self.currency)
 
         # end the trip
         status_changes.append(self.end_trip(device,
