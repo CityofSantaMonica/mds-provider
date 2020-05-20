@@ -696,7 +696,8 @@ class ProviderDataGenerator():
             event_type = util.random_date_from(datetime.datetime.utcnow())
 
         if event_location is None:
-            event_location = geometry.point_within(self.boundary)
+            point = geometry.point_within(self.boundary)
+            event_location = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
 
         status_change = dict(event_type=event_type,
                              event_type_reason=event_type_reason,
@@ -747,7 +748,8 @@ class ProviderDataGenerator():
             event_time = util.random_date_from(datetime.datetime.utcnow())
 
         if event_location is None:
-            event_location = geometry.point_within(self.boundary)
+            point = geometry.point_within(self.boundary)
+            event_location = mds.geometry.to_feature(point, properties=dict(timestamp=event_time))
 
         last_status = dict(last_event_time=event_time,
                            last_event_type=event_type,
