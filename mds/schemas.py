@@ -124,14 +124,18 @@ class Schema():
         Get a dict(event_type=list(event_type_reason)) for this schema.
         """
         etr = {}
-        if self.data_key != STATUS_CHANGES:
+        if self.data_key == STATUS_CHANGES:
+            event_key, reason_key = "event_type", "event_type_reason"
+        elif self.data_key == VEHICLES:
+            event_key, reason_key = "last_event_type", "last_event_type_reason"
+        else:
             return etr
 
         self._acquire()
 
         if "allOf" in self.item_schema:
             for allOf in self.item_schema["allOf"]:
-                sub_check = ["properties" in sub and "event_type" in sub["properties"] for sub in allOf["oneOf"]]
+                sub_check = ["properties" in sub and event_key in sub["properties"] for sub in allOf["oneOf"]]
                 if all(sub_check):
                     item_schema = allOf["oneOf"]
                     break
@@ -140,9 +144,9 @@ class Schema():
 
         for oneOf in item_schema:
             props = oneOf["properties"]
-            if "event_type" in props and "event_type_reason" in props:
-                event_type = props["event_type"]["enum"][0]
-                event_type_reasons = props["event_type_reason"]["enum"]
+            if event_key in props and reason_key in props:
+                event_type = props[event_key]["enum"][0]
+                event_type_reasons = props[reason_key]["enum"]
                 etr[event_type] = event_type_reasons
 
         return etr
