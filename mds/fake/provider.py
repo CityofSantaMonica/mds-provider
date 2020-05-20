@@ -791,7 +791,7 @@ class ProviderDataGenerator():
             event_type_reason = random.choice(etrs[event_type])
         else:
             # pick a random event_type and corresponding reason
-            event_type = random.choice(etrs.keys())
+            event_type = random.choice(list(etrs.keys()))
             event_type_reason = random.choice(etrs[event_type])
 
         return (event_type, event_type_reason)
