@@ -124,7 +124,6 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "event_time",
         "battery_pct",
         "associated_trip",
-        "associated_ticket",
         "publication_time"
     ])
 
@@ -136,9 +135,12 @@ def insert_status_changes_from(source_table, dest_table=STATUS_CHANGES, **kwargs
         "to_timestamp(cast(event_time as double precision) / 1000.0) at time zone 'UTC'",
         "battery_pct",
         "cast(associated_trip as uuid)",
-        "associated_ticket",
         "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'"
     ])
+
+    if version >= Version._040_():
+        inserts.append("associated_ticket")
+        selects.append("associated_ticket")
 
     return insert_statement(dest_table, inserts, selects, source_table, on_conflict_update)
 
@@ -184,7 +186,6 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "parking_verification_url",
         "standard_cost",
         "actual_cost",
-        "currency",
         "publication_time"
     ])
 
@@ -200,9 +201,12 @@ def insert_trips_from(source_table, dest_table=TRIPS, **kwargs):
         "parking_verification_url",
         "standard_cost",
         "actual_cost",
-        "currency",
         "to_timestamp(cast(publication_time as double precision) / 1000.0) at time zone 'UTC'",
     ])
+
+    if version >= Version._040_():
+        inserts.append("currency")
+        selects.append("currency")
 
     return insert_statement(dest_table, inserts, selects, source_table, on_conflict_update)
 
