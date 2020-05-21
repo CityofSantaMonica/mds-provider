@@ -231,3 +231,21 @@ class Version():
         version = Version(version)
         lower, upper = Version.mds()
         return lower <= version < upper
+
+    @classmethod
+    def _040_(cls):
+        """
+        Return a Version instance for MDS 0.4.0.
+
+        This is for internal use only and subject to change/deprecate in a future version.
+        """
+        return Version("0.4.0")
+
+    @classmethod
+    def _041_(cls):
+        """
+        Return a Version instance for MDS 0.4.1.
+
+        This is for internal use only and subject to change/deprecate in a future version.
+        """
+        return Version("0.4.1")

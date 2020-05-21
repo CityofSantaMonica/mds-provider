@@ -64,31 +64,27 @@ def schema_url(schema_type, ref=None):
 
 def is_pre_mds_040(ref) -> bool:
     """
-    Tries to determine if an unknown object is a string that represents
-    MDS 0.2.x or 0.3.x. Reason being that the Open Mobility Foundation
-    changed the URL structure of their repo with v0.4.0 by moving schemas
-    to a 'dockless' folder.
+    Tries to determine if an unknown object is a string that represents MDS pre-0.4.0.
 
-    n.b. is not smart enough to determine if a hash is a reference to an older
-    MDS version.
+    Open Mobility Foundation changed the URL structure with 0.4.0 by moving schemas
+    to a 'dockless' folder.
 
     Parameters:
         ref: Any
-                Might be an MDS version. Will be coerced to a string.
+            Might be an MDS version. Will be coerced to a string.
 
     Return:
         bool
     """
 
-    # if not a string representation of a version, e.g. 'master'
-    if isinstance(ref, str) and len(ref.split('.')) < 2:
+    # handle string representation of a version, e.g. 'master'
+    try:
+        ref = Version(str(ref))
+    except:
         return False
 
-    if not isinstance(ref, Version):
-        ref = Version(ref)
-
     try:
-        if ref < Version('0.4.0'):
+        if ref < Version._040_():
             return True
         return False
     except Exception as e:

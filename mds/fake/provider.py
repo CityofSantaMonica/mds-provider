@@ -467,7 +467,7 @@ class ProviderDataGenerator():
             start, rate = random.randint(75, 150), random.randint(12, 20)
             trip.update(actual_cost=(start + (math.floor(trip_duration / 60) - 1) * rate))
 
-        if "standard_cost" or "actual_cost" in trip and self.version >= Version("0.4.0"):
+        if "standard_cost" or "actual_cost" in trip and self.version >= Version._040_():
             trip.update(currency=self.currency)
 
         # end the trip

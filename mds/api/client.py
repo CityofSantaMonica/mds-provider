@@ -13,10 +13,6 @@ from ..versions import Version
 from .auth import auth_types
 
 
-_V040_ = Version("0.4.0")
-_V041_ = Version("0.4.1")
-
-
 class Client():
     """
     Client for MDS Provider APIs.
@@ -135,7 +131,7 @@ class Client():
         version = Version(kwargs.pop("version", self.version))
         version.raise_if_unsupported()
 
-        if version < _V040_:
+        if version < Version._040_():
             if record_type not in [STATUS_CHANGES, TRIPS]:
                 raise ValueError(f"MDS Version {version} only supports {STATUS_CHANGES} and {TRIPS}.")
             # adjust time query formats
@@ -145,6 +141,8 @@ class Client():
             elif record_type == TRIPS:
                 kwargs["min_end_time"] = self._date_format(kwargs.pop("min_end_time", None), version, record_type)
                 kwargs["max_end_time"] = self._date_format(kwargs.pop("max_end_time", None), version, record_type)
+        elif version < Version._041_() and record_type == VEHICLES:
+            raise ValueError(f"MDS Version {version} does not support the {VEHICLES} endpoint.")
         else:
             # parameter checks for record_type and version
             Client._params_check(record_type, version, **kwargs)
@@ -166,7 +164,7 @@ class Client():
 
         # paging is only supported for status_changes and trips prior to version 0.4.1
         paging_supported = any([
-            (record_type in [STATUS_CHANGES, TRIPS] and version < _V041_),
+            (record_type in [STATUS_CHANGES, TRIPS] and version < Version._041_()),
             record_type not in [STATUS_CHANGES, TRIPS]
         ])
         paging = paging_supported and bool(kwargs.pop("paging", True))
@@ -320,7 +318,7 @@ class Client():
         version = Version(kwargs.get("version", self.version))
         version.raise_if_unsupported()
 
-        if version < _V040_:
+        if version < Version._040_():
             raise ValueError(f"MDS Version {version} does not support the events endpoint.")
 
         Client._params_check(EVENTS, version, **kwargs)
@@ -358,8 +356,8 @@ class Client():
         version = Version(kwargs.get("version", self.version))
         version.raise_if_unsupported()
 
-        if version < _V040_:
-            raise ValueError(f"MDS Version {version} does not support the vehicles endpoint.")
+        if version < Version._041_():
+            raise ValueError(f"MDS Version {version} does not support the {VEHICLES} endpoint.")
 
         Client._params_check(VEHICLES, version, **kwargs)
 
@@ -459,7 +457,7 @@ class Client():
             # convert to datetime using decoder
             dt = TimestampDecoder(version=version).decode(dt)
 
-        if version >= _V040_ and record_type in [STATUS_CHANGES, TRIPS]:
+        if version >= Version._040_() and record_type in [STATUS_CHANGES, TRIPS]:
             encoder = TimestampEncoder(version=version, date_format="hours")
         else:
             encoder = TimestampEncoder(version=version, date_format="unix")
@@ -471,10 +469,10 @@ class Client():
         """
         Common checks for record_type query parameters.
         """
-        if record_type == STATUS_CHANGES and version >= _V040_ and "event_time" not in kwargs:
+        if record_type == STATUS_CHANGES and version >= Version._040_() and "event_time" not in kwargs:
             raise TypeError("The 'event_time' query parameter is required for status_changes requests.")
 
-        elif record_type == TRIPS and version >= _V040_ and "end_time" not in kwargs:
+        elif record_type == TRIPS and version >= Version._040_() and "end_time" not in kwargs:
             raise TypeError("The 'end_time' query parameter is required for trips requests.")
 
         elif record_type == EVENTS:
